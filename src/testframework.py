@@ -2,9 +2,9 @@ import unittest
 from socket import *
 import time
 import sys
-from btcp.constants import * 
-from client_app import ClientApp
-from server_app import ServerApp
+from btcp.constants import *
+from client_socket import BTCPClientSocket
+from server_socket import BTCPServerSocket
 
 timeout=100
 winsize=100
@@ -55,7 +55,8 @@ class TestbTCPFramework(unittest.TestCase):
         # default netem rule (does nothing)
         run_command(netem_add)
         
-        # launch localhost server        
+        # launch localhost server
+        self.server = BTCPServerSocket(winsize, timeout)
 
     def tearDown(self):
         """Clean up after testing"""
@@ -63,19 +64,23 @@ class TestbTCPFramework(unittest.TestCase):
         run_command(netem_del)
         
         # close server
+        self.server.close()
 
     def test_ideal_network(self):
         """reliability over an ideal framework"""
         # setup environment (nothing to set)
-        self.server.run()
-        self.client.run()
+
         # launch localhost client connecting to server
-        
+        client = BTCPClientSocket(winsize, timeout)
+
         # client sends content to server
-        
+        client.connect(SERVER_IP, SERVER_PORT)
+
         # server receives content from client
-        
+        self.server.accept()
+
         # content received by server matches the content sent by client
+
 
     def test_flipping_network(self):
         """reliability over network with bit flips 
