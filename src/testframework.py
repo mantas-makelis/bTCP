@@ -1,7 +1,10 @@
 import unittest
-import socket
+from socket import *
 import time
 import sys
+from btcp.constants import * 
+from client_app import ClientApp
+from server_app import ServerApp
 
 timeout=100
 winsize=100
@@ -53,6 +56,8 @@ class TestbTCPFramework(unittest.TestCase):
         run_command(netem_add)
         
         # launch localhost server
+        self.server = ServerApp()
+        self.client = ClientApp()
         
 
     def tearDown(self):
@@ -60,12 +65,16 @@ class TestbTCPFramework(unittest.TestCase):
         # clean the environment
         run_command(netem_del)
         
-        # close server
+        # close server and client
+        self.server.socket.close()
+        self.client.socket.close()
 
+    
     def test_ideal_network(self):
         """reliability over an ideal framework"""
         # setup environment (nothing to set)
-
+        self.server.run()
+        self.client.run()
         # launch localhost client connecting to server
         
         # client sends content to server
@@ -73,7 +82,7 @@ class TestbTCPFramework(unittest.TestCase):
         # server receives content from client
         
         # content received by server matches the content sent by client
-    
+
     def test_flipping_network(self):
         """reliability over network with bit flips 
         (which sometimes results in lower layer packet loss)"""
