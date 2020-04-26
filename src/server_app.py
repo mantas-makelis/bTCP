@@ -3,13 +3,10 @@
 import argparse
 from btcp.constants import *
 from btcp.server_socket import BTCPServerSocket
-import threading
 
-class ServerApp(threading.Thread):
+class ServerApp():
 
     def __init__(self):
-        threading.Thread.__init__(self)
-
         parser = argparse.ArgumentParser()
         parser.add_argument("-w", "--window", help="Define bTCP window size", type=int, default=100)
         parser.add_argument("-t", "--timeout", help="Define bTCP timeout in milliseconds", type=int, default=100)
