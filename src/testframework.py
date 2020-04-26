@@ -55,21 +55,15 @@ class TestbTCPFramework(unittest.TestCase):
         # default netem rule (does nothing)
         run_command(netem_add)
         
-        # launch localhost server
-        self.server = ServerApp()
-        self.client = ClientApp()
-        
+        # launch localhost server        
 
     def tearDown(self):
         """Clean up after testing"""
         # clean the environment
         run_command(netem_del)
         
-        # close server and client
-        self.server.socket.close()
-        self.client.socket.close()
+        # close server
 
-    
     def test_ideal_network(self):
         """reliability over an ideal framework"""
         # setup environment (nothing to set)
