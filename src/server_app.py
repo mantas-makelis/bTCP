@@ -6,7 +6,7 @@ from btcp.server_socket import BTCPServerSocket
 
 class ServerApp():
 
-    def __init__(self):
+    def run(self):
         parser = argparse.ArgumentParser()
         parser.add_argument("-w", "--window", help="Define bTCP window size", type=int, default=100)
         parser.add_argument("-t", "--timeout", help="Define bTCP timeout in milliseconds", type=int, default=100)
@@ -16,7 +16,6 @@ class ServerApp():
         # Create a bTCP server socket
         self.socket = BTCPServerSocket(args.window, args.timeout)
 
-    def run(self):
         # TODO Write your file transfer server code here using your BTCPServerSocket's accept, and recv methods.
         while 1:
             # Wait for connection
