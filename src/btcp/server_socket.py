@@ -19,13 +19,8 @@ class BTCPServerSocket(BTCPSocket):
         message = self.unpack_segment(segment)
         self.buffer.append(message)
 
-        # Look at the flag
-        if message['flag'] == SYN:
+        if not self.con_est:
             self.accept()
-            self.conn_req = True
-        else:
-            self.recv()
-        # Receive (recv)
 
     # Wait for the client to initiate a three-way handshake
     def accept(self):
@@ -46,7 +41,6 @@ class BTCPServerSocket(BTCPSocket):
 
     # Send any incoming data to the application layer
     def recv(self):
-
         pass
 
     # Send data originating from the application in a reliable way to the client

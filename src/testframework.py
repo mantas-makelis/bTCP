@@ -77,8 +77,7 @@ class TestbTCPFramework(unittest.TestCase):
         # client.send(client.make_segment())
 
         # server receives content from client
-        # while 1:
-        #     self.server.accept()
+        self.server.recv()
 
         # content received by server matches the content sent by client
 
