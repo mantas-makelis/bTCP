@@ -10,37 +10,43 @@ class BTCPServerSocket(BTCPSocket):
     def __init__(self, window, timeout):
         super().__init__(window, timeout)
         self._lossy_layer = LossyLayer(self, SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT)
-        self.conn_req = False
         self.data = None
-        print("Socket initialised")
 
     # Called by the lossy layer from another thread whenever a segment arrives
     def lossy_layer_input(self, segment, address):
-        # If segment SYN:
-            # do accept()
-        self.conn_req = True
 
-        # Disect the segment
-        # Compute the checksum
-        # Compare the checksum
+        # Unpack the segment
+        message = self.unpack_segment(segment)
+        self.buffer.append(message)
+
+        # Look at the flag
+        if message['flag'] == SYN:
+            self.accept()
+            self.conn_req = True
+        else:
+            self.recv()
         # Receive (recv)
-        pass
 
     # Wait for the client to initiate a three-way handshake
     def accept(self):
-        if not self.conn_req:
-            return
+        while not self.con_est:
+            if self.buffer:
 
-        # SYN+ACK
-        synack_segment = self.make_segment(None, SYNACK)
-        
-        # Send
-        self.send(synack_segment)
-        self.conn_req = False
-        
+                # Get message
+                message = self.buffer.pop(0)
+
+                # Look at the flag
+                if message['flag'] == SYN:
+
+                    # Send SYNACK
+                    segment = self.make_segment(None, SYNACK)
+                    self.con_est = True
+                    print("Server sent SYNACK")
+                    self.send(segment)
 
     # Send any incoming data to the application layer
     def recv(self):
+
         pass
 
     # Send data originating from the application in a reliable way to the client

@@ -2,7 +2,6 @@ import unittest
 from socket import *
 import time
 import sys
-from btcp.constants import *
 from client_socket import BTCPClientSocket
 from server_socket import BTCPServerSocket
 
@@ -72,12 +71,14 @@ class TestbTCPFramework(unittest.TestCase):
 
         # launch localhost client connecting to server
         client = BTCPClientSocket(winsize, timeout)
+        client.connect()
 
         # client sends content to server
-        client.connect(SERVER_IP, SERVER_PORT)
+        # client.send(client.make_segment())
 
         # server receives content from client
-        self.server.accept()
+        # while 1:
+        #     self.server.accept()
 
         # content received by server matches the content sent by client
 

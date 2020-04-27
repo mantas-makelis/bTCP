@@ -8,21 +8,43 @@ class BTCPClientSocket(BTCPSocket):
     def __init__(self, window, timeout):
         super().__init__(window, timeout)
         self._lossy_layer = LossyLayer(self, CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT)
+        self.syn_sent = False
+
 
     # Called by the lossy layer from another thread whenever a segment arrives. 
     def lossy_layer_input(self, segment, address):
-        print("YAY")
-        pass
+
+        # Unpack the segment
+        message = self.unpack_segment(segment)
+
+        # Put it in the buffer
+        self.buffer.append(message)
 
     # Perform a three-way handshake to establish a connection
-    def connect(self, ip, port):
-        # build a SYN message
-        syn_segment = self.make_segment(None, SYN)
-        # send it
-        self.send(syn_segment)
-        # wait for response (SYN+ACK)
-        # send ACK
-    
+    def connect(self):
+        while not self.con_est:
+            if not self.syn_sent:
+
+                # Send SYN
+                segment = self.make_segment(None, SYN)
+                self.syn_sent = True
+                print("Client sent SYN")
+                self.send(segment)
+
+            elif self.buffer:
+
+                # Get message
+                message = self.buffer.pop(0)
+
+                # Look at the flag
+                if message['flag'] == SYNACK:
+
+                    # Send ACK
+                    segment = self.make_segment(b'hello', ACK)
+                    self.con_est = True
+                    print("Client sent ACK")
+                    self.send(segment)
+
     # Send data originating from the application in a reliable way to the server
     def send(self, segment):
         self._lossy_layer.send_segment(segment)

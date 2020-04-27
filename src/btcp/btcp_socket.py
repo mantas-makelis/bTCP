@@ -12,6 +12,8 @@ class BTCPSocket:
         self._seq_nr = 0
         self._ack_nr = 0
         self.types = ["sequence", "acknowledge", "flag", "window", "datalength", "checksum"]
+        self.buffer = []
+        self.con_est = False
 
     @staticmethod
     def in_cksum(data):
@@ -59,7 +61,7 @@ class BTCPSocket:
         """
 
         if data is None:
-            data = 0
+            data = b'0'
 
         # The resulting bytes are in network byte order
         header = struct.pack("!HHbbHH",
@@ -67,29 +69,26 @@ class BTCPSocket:
                              self._ack_nr,       # acknowledgement number (halfword, 2 bytes)
                              flag,               # flags (byte), [1=ACK, 2=SYN, 3=SYN+ACK, 4=FIN, 5=FIN+ACK]
                              self._window,       # window (byte)
-                             len(str(data)),          # data length (halfword, 2 bytes)
+                             len(data),          # data length (halfword, 2 bytes)
                              0)                  # checksum (halfword, 2 bytes)
 
-        data = struct.pack("!d", data)
+        data = struct.pack("!d", time.time())
 
         # Calculate the checksum on the data and the dummy header.
-        myChecksum = self.in_cksum(header + data)
+        my_cksum = self.in_cksum(header + data)
         
-        header = struct.pack("!HHbbHH", 
+        header = struct.pack("!HHbbHH",
                              self._seq_nr,
                              self._ack_nr,
                              flag,
                              self._window,
                              len(data),
-                             myChecksum)                 
+                             my_cksum)
         message = header + data
 
         return message
 
-    @staticmethod
-    def read_segment(self, segment):
-        unpacked = struct.unpack('!HHbbHH')
-        data = dict(zip(self.types, unpacked))
-        # received_flag = 
-
-        return data
+    def unpack_segment(self, segment):
+        unpacked = struct.unpack('!HHbbHHd', segment)
+        unpacked = dict(zip(self.types, unpacked))
+        return unpacked
