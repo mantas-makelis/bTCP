@@ -2,8 +2,8 @@ import unittest
 from socket import *
 import time
 import sys
-from client_socket import BTCPClientSocket
-from server_socket import BTCPServerSocket
+from btcp.client_socket import BTCPClientSocket
+from btcp.server_socket import BTCPServerSocket
 
 timeout=100
 winsize=100
@@ -72,15 +72,15 @@ class TestbTCPFramework(unittest.TestCase):
         # launch localhost client connecting to server
         client = BTCPClientSocket(winsize, timeout)
         client.connect()
-
+        
         # client sends content to server
         # client.send(client.make_segment())
 
         # server receives content from client
-        self.server.recv()
+        recvMessage = self.server.recv()
 
         # content received by server matches the content sent by client
-
+        
 
     def test_flipping_network(self):
         """reliability over network with bit flips 

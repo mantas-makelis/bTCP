@@ -9,9 +9,9 @@ class BTCPSocket:
     def __init__(self, window, timeout):
         self._window = window
         self._timeout = timeout
-        self._seq_nr = 0
-        self._ack_nr = 0
-        self.types = ["sequence", "acknowledge", "flag", "window", "datalength", "checksum"]
+        self.types = ["seq_nr", "ack_nr", "flag", "window", "data_len", "checksum"]
+        self._seq_nr = None
+        self._ack_nr = None
         self.buffer = []
         self.con_est = False
 
@@ -47,7 +47,11 @@ class BTCPSocket:
 
         return cksum
 
-    def make_segment(self, data, flag=0):
+    def make_segment(self,
+                     data=b'0',
+                     seq_nr=0,
+                     ack_nr=0,
+                     flag=0):
         """[Creates a segment given the data]
 
         Arguments:
@@ -60,13 +64,10 @@ class BTCPSocket:
             [bytes] -- [a segment message]
         """
 
-        if data is None:
-            data = b'0'
-
         # The resulting bytes are in network byte order
         header = struct.pack("!HHbbHH",
-                             self._seq_nr,       # sequence number (halfword, 2 bytes)
-                             self._ack_nr,       # acknowledgement number (halfword, 2 bytes)
+                             seq_nr,             # sequence number (halfword, 2 bytes)
+                             ack_nr,             # acknowledgement number (halfword, 2 bytes)
                              flag,               # flags (byte), [1=ACK, 2=SYN, 3=SYN+ACK, 4=FIN, 5=FIN+ACK]
                              self._window,       # window (byte)
                              len(data),          # data length (halfword, 2 bytes)
@@ -78,8 +79,8 @@ class BTCPSocket:
         my_cksum = self.in_cksum(header + data)
         
         header = struct.pack("!HHbbHH",
-                             self._seq_nr,
-                             self._ack_nr,
+                             seq_nr,
+                             ack_nr,
                              flag,
                              self._window,
                              len(data),
