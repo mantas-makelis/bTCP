@@ -72,12 +72,14 @@ class TestbTCPFramework(unittest.TestCase):
         # launch localhost client connecting to server
         client = BTCPClientSocket(winsize, timeout)
         client.connect()
+        client.disconnect()
+        client.connect()
+        client.disconnect()
         
         # client sends content to server
         # client.send(client.make_segment())
 
         # server receives content from client
-        recvMessage = self.server.recv()
 
         # content received by server matches the content sent by client
         
