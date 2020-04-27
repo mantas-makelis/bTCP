@@ -29,10 +29,10 @@ class BTCPSocket:
             data += "\0"
 
         # split into 16-bit substrings
-        stringarr = array.array("H", data)
+        strarr = array.array("H", data)
 
         # sum
-        cksum = sum(stringarr)
+        cksum = sum(strarr)
 
         # carry
         cksum = (cksum >> 16) + (cksum & 0xffff)
@@ -47,7 +47,7 @@ class BTCPSocket:
 
 
     @staticmethod
-    def make_segment(self, data, flag = 0):
+    def make_segment(self, data, flag=0):
         """[Creates a segment given the data]
 
         Arguments:
