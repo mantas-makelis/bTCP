@@ -45,8 +45,6 @@ class BTCPSocket:
 
         return cksum
 
-
-    @staticmethod
     def make_segment(self, data, flag=0):
         """[Creates a segment given the data]
 
@@ -60,13 +58,16 @@ class BTCPSocket:
             [bytes] -- [a segment message]
         """
 
+        if data is None:
+            data = 0
+
         # The resulting bytes are in network byte order
         header = struct.pack("!HHbbHH",
                              self._seq_nr,       # sequence number (halfword, 2 bytes)
                              self._ack_nr,       # acknowledgement number (halfword, 2 bytes)
                              flag,               # flags (byte), [1=ACK, 2=SYN, 3=SYN+ACK, 4=FIN, 5=FIN+ACK]
                              self._window,       # window (byte)
-                             len(data),          # data length (halfword, 2 bytes)
+                             len(str(data)),          # data length (halfword, 2 bytes)
                              0)                  # checksum (halfword, 2 bytes)
 
         data = struct.pack("!d", data)
