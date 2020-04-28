@@ -1,5 +1,3 @@
-#!/usr/local/bin/python3
-
 import argparse
 from btcp.server_socket import BTCPServerSocket
 
@@ -20,7 +18,6 @@ def main():
     socket.accept()
 
     # Receive data
-    socket.recv()
 
     # Clean up any state
     socket.close()
