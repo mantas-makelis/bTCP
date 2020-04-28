@@ -8,6 +8,8 @@ from btcp.enums import Flag, State, Key
 
 
 class BTCPSocket:
+    """ Base bTCP socket on which both client and server sockets are based """
+    
     def __init__(self, window, timeout):
         self._window = window
         self._timeout = timeout

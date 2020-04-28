@@ -68,6 +68,8 @@ class TestbTCPFramework(unittest.TestCase):
         # run_command(netem_del)
 
         # close server
+        self.server.stop()
+        self.client.stop()
 
 
     def test_ideal_network(self):
