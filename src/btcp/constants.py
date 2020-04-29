@@ -10,6 +10,8 @@ PAYLOAD_SIZE = 1008
 SEGMENT_SIZE = HEADER_SIZE + PAYLOAD_SIZE
 
 # Communication
+HEADER_FORMAT = '!HHbbHH'
+DATA_FORMAT= '!s'
 MAX_ATTEMPTS = 3
-HEADER_TYPES = ['seq_nr', 'ack_nr', 'flag', 'window', 'data_len', 'checksum', 'data']
+SEGMENT_KEYS = ['seq', 'ack', 'flag', 'win', 'dlen', 'cksum', 'data']
 BUFFER_SIZE = 5

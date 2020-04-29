@@ -32,7 +32,7 @@ class BTCPClientSocket(BTCPSocket):
         # Attempt to connect while the state is unchanged or maximum attempts are exeeded
         while self.state is State.CONN_PEND and syn_count < MAX_ATTEMPTS:
             # Make a break and handle incoming segments
-            self.handle_flow()
+            self._handle_flow()
             # Block for sending SYN request
             if syn_count == 0 or timer > self._timeout:
                 self.seq_nr = self.start_random_sequence()
@@ -45,7 +45,7 @@ class BTCPClientSocket(BTCPSocket):
             # Block for receiving SYNACK
             elif Key.SYNACK in self.drop:
                 message = self.drop.pop(Key.SYNACK)
-                self.ack_nr = message['seq_nr'] + 1
+                self.ack_nr = message['seq'] + 1
                 segment = self.pack_segment(flag=Flag.ACK)
                 self._lossy_layer.send_segment(segment)
                 self.state = State.CONN_EST
@@ -73,13 +73,13 @@ class BTCPClientSocket(BTCPSocket):
         # Initialize local variables
         fin_count = timer = start_timer = 0
         # Attempt to disconnect while the state is unchanged or maximum attempts are exeeded
-        while self.state is State.CONN_EST and fin_count < MAX_ATTEMPTS:
+        while self.state is State.DISC_PEND:
             # Make a break and handle incoming segments
-            self.handle_flow()
+            self._handle_flow()
             # Block for sending FIN request
-            if not self.fin_sent or timer > self._timeout:
+            if fin_count == 0 or timer > self._timeout:
                 self.seq_nr += 1
-                segment = self.make_segment(flag=Flag.FIN)
+                segment = self.pack_segment(flag=Flag.FIN)
                 self._lossy_layer.send_segment(segment)
                 fin_count += 1
                 print("Client sent FIN")
@@ -88,8 +88,8 @@ class BTCPClientSocket(BTCPSocket):
             # Block for receiving FINACK
             elif Key.FINACK in self.drop:
                 message = self.drop.pop(Key.FINACK)
-                self.ack_nr = message['seq_nr'] + 1
-                segment = self.make_segment(flag=Flag.ACK)
+                self.ack_nr = message['seq'] + 1
+                segment = self.pack_segment(flag=Flag.ACK)
                 self._lossy_layer.send_segment(segment)
                 self.state = State.OPEN
                 print('Client sent ACK and terminated connection')

@@ -18,6 +18,12 @@ class BTCPServerSocket(BTCPSocket):
         """ Called by the lossy layer from another thread whenever a segment arrives """
         if not self.buffer.full():
             self.buffer.put(segment, block=False)
+
+    
+    def idle(self):
+        self._handle_flow()
+        if Key.FIN in self.drop:
+            self._disconnect()
     
     
     def accept(self):
@@ -28,12 +34,12 @@ class BTCPServerSocket(BTCPSocket):
         # Wait for connection attempt
         while self.state is State.OPEN:
             # Make a break and handle incoming segments
-            self.handle_flow()
+            self._handle_flow()
             # Block for receiving SYN request
             if Key.SYN in self.drop:
                 message = self.drop.pop(Key.SYN)
                 self.seq_nr = self.start_random_sequence()
-                self.ack_nr = message['seq_nr'] + 1
+                self.ack_nr = message['seq'] + 1
                 segment = self.pack_segment(flag=Flag.SYNACK)
                 self._lossy_layer.send_segment(segment)
                 print('Server sent SYNACK')
@@ -42,10 +48,10 @@ class BTCPServerSocket(BTCPSocket):
         # Wait for connection until the state changes
         while self.state is State.CONN_PEND:
             # Make a break and handle incoming segments
-            self.handle_flow()
+            self._handle_flow()
             # Block for receiving ACK
             if Key.CONN_ACK in self.drop:
-                message = self.drop.pop(Key.CONN_ACK)
+                _ = self.drop.pop(Key.CONN_ACK)
                 self.state = State.CONN_EST
                 print('Server established connection')
 
@@ -63,3 +69,25 @@ class BTCPServerSocket(BTCPSocket):
     def close(self):
         """ Clean up any state """
         self._lossy_layer.destroy()
+
+    
+    def _disconnect(self):
+        """ Internal function which handles the disconnect attepmt """
+        # Only connected server can begin disconnect request and if the FIN segment was received
+        if self.state in [State.OPEN, State.CONN_PEND] or not Key.FIN in self.drop:
+            return
+        # Respond with FINACK
+        message = self.drop.pop(Key.FIN)
+        self.seq_nr = self.start_random_sequence()
+        self.ack_nr = message['seq'] + 1
+        segment = self.pack_segment(flag=Flag.FINACK)
+        self._lossy_layer.send_segment(segment)
+        self.state = State.DISC_PEND
+        while self.state is State.DISC_PEND:
+            # Make a break and handle incoming segments
+            self._handle_flow()
+            # Block for receiving ACK
+            if Key.DISC_ACK in self.drop:
+                _ = self.drop.pop(Key.DISC_ACK)
+                self.state = State.CONN_EST
+                print('Server terminated connection')

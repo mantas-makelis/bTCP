@@ -14,6 +14,6 @@ class ClientThread(StoppableThread):
         self.socket.connect()
 
         while not self._stopevent.isSet():
-            continue
+            self.socket.disconnect()
 
         self.socket.close()

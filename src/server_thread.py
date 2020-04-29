@@ -14,6 +14,6 @@ class ServerThread(StoppableThread):
         self.socket.accept()
 
         while not self._stopevent.isSet():
-            continue
+            self.socket.idle()
 
         self.socket.close()

@@ -67,6 +67,7 @@ class TestbTCPFramework(unittest.TestCase):
         # clean the environment
         # run_command(netem_del)
 
+        time.sleep(1)
         # close server
         self.server.stop()
         self.client.stop()
