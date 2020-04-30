@@ -13,7 +13,7 @@ class ServerThread(StoppableThread):
         """ The main loop of the server """
         self.socket.accept()
 
-        while not self._stopevent.isSet():
-            self.socket.idle()
+        file_bytes = self.socket.recv()
+        print(file_bytes.decode('utf-8'))
 
         self.socket.close()

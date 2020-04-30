@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 # Connections
 CLIENT_IP = 'localhost'
 CLIENT_PORT = 20000
@@ -11,7 +13,9 @@ SEGMENT_SIZE = HEADER_SIZE + PAYLOAD_SIZE
 
 # Communication
 HEADER_FORMAT = '!HHbbHH'
-DATA_FORMAT= '!s'
+DATA_FORMAT= f'{PAYLOAD_SIZE}s'
 MAX_ATTEMPTS = 3
 SEGMENT_KEYS = ['seq', 'ack', 'flag', 'win', 'dlen', 'cksum', 'data']
 BUFFER_SIZE = 5
+
+Segment = namedtuple('Segment', ['sent', 'seq', 'exp_ack', 'is_ack', 'timer', 'start_time', 'packed'])

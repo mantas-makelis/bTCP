@@ -1,6 +1,6 @@
 from btcp.btcp_socket import BTCPSocket
 from btcp.lossy_layer import LossyLayer
-from btcp.constants import *
+from btcp.constants import SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT
 from btcp.enums import State, Flag, Key
 
 
@@ -38,11 +38,11 @@ class BTCPServerSocket(BTCPSocket):
             # Block for receiving SYN request
             if Key.SYN in self.drop:
                 message = self.drop.pop(Key.SYN)
+                self.recv_win = message['win']
                 self.seq_nr = self.start_random_sequence()
-                self.ack_nr = message['seq'] + 1
-                segment = self.pack_segment(flag=Flag.SYNACK)
+                segment = self.pack_segment(ack_nr=message['seq'] + 1, flag=Flag.SYNACK)
                 self._lossy_layer.send_segment(segment)
-                print('Server sent SYNACK')
+                print(f'Server sent SYNACK (seq: {self.seq_nr}, ack: {message["seq"] + 1})')
                 # Move state to pending connection
                 self.state = State.CONN_PEND
         # Wait for connection until the state changes
@@ -51,19 +51,34 @@ class BTCPServerSocket(BTCPSocket):
             self._handle_flow()
             # Block for receiving ACK
             if Key.CONN_ACK in self.drop:
-                _ = self.drop.pop(Key.CONN_ACK)
-                self.state = State.CONN_EST
-                print('Server established connection')
+                message = self.drop.pop(Key.CONN_ACK)
+                if self.seq_nr + 1 == message['ack']:
+                    self.recv_win = message['win']
+                    self.seq_nr += 1
+                    self.state = State.CONN_EST
+                    print(f'Server established connection (seq: {self.seq_nr})')
+                
 
-
-    def recv(self):
+    def recv(self) -> bytes:
         """ Send any incoming data to the application layer """
-        pass
-
-
-    def send(self, segment):
-        """ Send data originating from the application in a reliable way to the client """
-        self._lossy_layer.send_segment(segment)
+        if self.state is not State.CONN_EST:
+            return
+        self.state = State.RECV
+        data = acked = buf = []
+        buf_size = self._window
+        while Key.FIN not in self.drop:
+            self._handle_flow()
+            if Key.DATA in self.drop:
+                message = self.drop.pop(Key.DATA)
+                ack = message['seq'] + message['dlen']
+                if ack not in acked:
+                    data.append((message['data'][:message['dlen']], ack))
+                    acked.append(ack)
+                segment = self.pack_segment(ack_nr=ack)
+        # Sort the data according to the ACK numbers
+        data.sort(key=lambda tup: tup[1])
+        # Merge the data bytes into a single object
+        return b''.join([data[0] for i in data])
 
 
     def close(self):
@@ -72,16 +87,15 @@ class BTCPServerSocket(BTCPSocket):
 
     
     def _disconnect(self):
-        """ Internal function which handles the disconnect attepmt """
+        """ Internal function which handles the disconnect attempt """
         # Only connected server can begin disconnect request and if the FIN segment was received
         if self.state in [State.OPEN, State.CONN_PEND] or not Key.FIN in self.drop:
             return
         # Respond with FINACK
         message = self.drop.pop(Key.FIN)
-        self.seq_nr = self.start_random_sequence()
-        self.ack_nr = message['seq'] + 1
         segment = self.pack_segment(flag=Flag.FINACK)
         self._lossy_layer.send_segment(segment)
+        print('Server sent FINACK')
         self.state = State.DISC_PEND
         while self.state is State.DISC_PEND:
             # Make a break and handle incoming segments

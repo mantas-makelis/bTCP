@@ -13,7 +13,10 @@ class ClientThread(StoppableThread):
         """ The main loop of the client """
         self.socket.connect()
 
-        while not self._stopevent.isSet():
-            self.socket.disconnect()
+        with open('src/inputs/input.file', 'rb') as f:
+            file_bytes = f.read()
+        self.socket.send(file_bytes)
+
+        self.socket.disconnect()
 
         self.socket.close()

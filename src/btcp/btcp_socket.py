@@ -3,7 +3,7 @@ import struct
 import time
 import random
 import queue
-from btcp.constants import BUFFER_SIZE, SEGMENT_KEYS, HEADER_FORMAT, DATA_FORMAT
+from btcp.constants import BUFFER_SIZE, SEGMENT_KEYS, HEADER_FORMAT, DATA_FORMAT, PAYLOAD_SIZE
 from btcp.enums import Flag, State, Key
 
 
@@ -13,20 +13,21 @@ class BTCPSocket:
     def __init__(self, window, timeout):
         self._window = window
         self._timeout = timeout
+        self.recv_win = 0
         self.state = State.OPEN
-        self.seq_nr = self.ack_nr = 0
-        self.buffer = queue.Queue(BUFFER_SIZE)
+        self.seq_nr = 0
+        self.buffer = queue.Queue(window)
         self.drop = {}
 
 
     def _handle_flow(self):
         """ Decides where to put a received message """
-        # Check the buffer for incomming messages
+        # Check the buffer for incoming messages
         try:
             segment = self.buffer.get(block=False)
-            message, has_data = self.unpack_segment(segment)
+            message = self.unpack_segment(segment)
             # Throw away the segment if the checksum is invalid
-            if not self.valid_checksum(message, has_data):
+            if not self.valid_checksum(message):
                 return
         except queue.Empty:
             return
@@ -49,49 +50,45 @@ class BTCPSocket:
         # Termination approval from the client
         elif self.state is State.DISC_PEND and flag is Flag.ACK:
             self.drop[Key.DISC_ACK] = message
+        # While transmitting
+        elif self.state is State.TRANS and flag is Flag.ACK:
+            self.drop[Key.RECV_ACK] = message
+        # While receiving
+        elif self.state is State.RECV and flag is Flag.NONE:
+            self.drop[Key.DATA] = message
+    
 
-
-    def pack_segment(self, data=None, flag=Flag.NONE):
+    def pack_segment(self, ack_nr=0, data=b'', flag=Flag.NONE):
         """ Creates a segment with the given data and current sequence and acknoledgement numbers """
-        data_size = len(data) if data else 0
+        data_size = len(data)
+        if data_size > PAYLOAD_SIZE:
+            return # TODO: throw an error
+        win_size = self._window - self.buffer.qsize()
         header = struct.pack(HEADER_FORMAT,
                              self.seq_nr,   # sequence number (halfword, 2 bytes)
-                             self.ack_nr,   # acknowledgement number (halfword, 2 bytes)
+                             ack_nr,        # acknowledgement number (halfword, 2 bytes)
                              flag.value,    # flags (byte),
-                             self._window,  # window (byte)
+                             win_size,      # window (byte)
                              data_size,     # data length (halfword, 2 bytes)
                              0)             # checksum (halfword, 2 bytes)
-        if data is None:
-            cksum = self.calc_checksum(header)
-            header = struct.pack(HEADER_FORMAT, self.seq_nr, self.ack_nr, flag.value, self._window, data_size, cksum)
-            return header
-        else:
-            packed_data = struct.pack(DATA_FORMAT, data)
-            cksum = self.calc_checksum(header + packed_data)
-            header = struct.pack(HEADER_FORMAT, self.seq_nr, self.ack_nr, flag.value, self._window, data_size, cksum)
-            return header + packed_data
+        payload = struct.pack(DATA_FORMAT, data)
+        cksum = self.calc_checksum(header + payload)
+        header = struct.pack(HEADER_FORMAT, self.seq_nr, ack_nr, flag.value, win_size, data_size, cksum)
+        return header + payload
 
 
     def unpack_segment(self, segment):
         """ Creates a dictionary representation of the received segment """
-        has_data = False
-        try:
-            unpacked = struct.unpack(HEADER_FORMAT + DATA_FORMAT, segment)
-            has_data = True
-        except:
-            unpacked = struct.unpack(HEADER_FORMAT, segment)
+        unpacked = struct.unpack(HEADER_FORMAT + DATA_FORMAT, segment)
         unpacked = dict(zip(SEGMENT_KEYS, unpacked))
         unpacked['flag'] = Flag(unpacked['flag'])
-        return unpacked, has_data
+        return unpacked
 
 
     @staticmethod
-    def valid_checksum(msg, has_data):
+    def valid_checksum(msg):
         """ Validates the received checksum """
-        if has_data:
-            packed_seg = struct.pack(HEADER_FORMAT + DATA_FORMAT, msg['seq'], msg['ack'], msg['flag'], msg['win'], msg['dlen'], 0, msg['data'])
-        else:
-            packed_seg = struct.pack(HEADER_FORMAT, msg['seq'], msg['ack'], msg['flag'].value, msg['win'], msg['dlen'], 0)
+        packed_seg = struct.pack(HEADER_FORMAT + DATA_FORMAT, msg['seq'], msg['ack'], msg['flag'].value, msg['win'], msg['dlen'], 0, msg['data'])
         cksum = BTCPSocket.calc_checksum(packed_seg)
         return cksum == msg['cksum']
 

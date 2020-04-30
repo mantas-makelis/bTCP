@@ -29,3 +29,5 @@ class Key(Enum):
     FIN = 3
     FINACK = 4
     DISC_ACK = 5
+    RECV_ACK = 6
+    DATA = 7
