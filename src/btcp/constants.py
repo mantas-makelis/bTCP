@@ -10,10 +10,11 @@ SERVER_PORT = 30000
 HEADER_SIZE = 10
 PAYLOAD_SIZE = 1008
 SEGMENT_SIZE = HEADER_SIZE + PAYLOAD_SIZE
+TWO_BYTES = 2 ** 16
 
 # Communication
 HEADER_FORMAT = '!HHbbHH'
 DATA_FORMAT= f'{PAYLOAD_SIZE}s'
-MAX_ATTEMPTS = 3
-SEGMENT_KEYS = ['seq', 'ack', 'flag', 'win', 'dlen', 'cksum', 'data']
+MAX_ATTEMPTS = 10
+SEGMENT_KEYS = ['seq_nr', 'ack_nr', 'flag', 'win', 'dlen', 'cksum', 'data']
 BUFFER_SIZE = 5

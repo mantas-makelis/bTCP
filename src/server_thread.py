@@ -1,6 +1,6 @@
 from stoppable_thread import StoppableThread
 from btcp.server_socket import BTCPServerSocket
-
+import os
 
 class ServerThread(StoppableThread):
     """ Simulates the server with a single socket """
@@ -14,6 +14,10 @@ class ServerThread(StoppableThread):
         self.socket.accept()
 
         file_bytes = self.socket.recv()
-        print(file_bytes.decode('utf-8'))
+        
+        with open('src/inputs/output.file', 'w') as f:
+            output = file_bytes.decode('utf-8')
+            output = os.linesep.join([s for s in output.splitlines() if s])
+            f.write(output)
 
         self.socket.close()

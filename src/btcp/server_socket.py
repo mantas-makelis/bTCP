@@ -2,7 +2,7 @@ from btcp.btcp_socket import BTCPSocket
 from btcp.lossy_layer import LossyLayer
 from btcp.constants import SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT
 from btcp.enums import State, Flag, Key
-
+import time
 
 class BTCPServerSocket(BTCPSocket):
     """ The bTCP server socket
@@ -16,8 +16,7 @@ class BTCPServerSocket(BTCPSocket):
 
     def lossy_layer_input(self, segment, address):
         """ Called by the lossy layer from another thread whenever a segment arrives """
-        if not self.buffer.full():
-            self.buffer.put(segment, block=False)
+        self.buffer.put(segment, block=True, timeout=100)
 
     
     def idle(self):
@@ -31,57 +30,69 @@ class BTCPServerSocket(BTCPSocket):
         # Only non-connected server can accept a connection
         if self.state is not State.OPEN:
             return
+        # Move state to pending connection
+        self.state = State.CONN_PEND
         # Wait for connection attempt
-        while self.state is State.OPEN:
+        while State.CONN_PEND:
             # Make a break and handle incoming segments
             self._handle_flow()
             # Block for receiving SYN request
             if Key.SYN in self.drop:
                 message = self.drop.pop(Key.SYN)
                 self.recv_win = message['win']
-                self.seq_nr = self.start_random_sequence()
-                segment = self.pack_segment(ack_nr=message['seq'] + 1, flag=Flag.SYNACK)
+                ack_nr = self.safe_incr(message['seq_nr'])
+                segment = self.pack_segment(ack_nr=ack_nr, flag=Flag.SYNACK)
                 self._lossy_layer.send_segment(segment)
-                print(f'Server sent SYNACK (seq: {self.seq_nr}, ack: {message["seq"] + 1})')
-                # Move state to pending connection
-                self.state = State.CONN_PEND
-        # Wait for connection until the state changes
-        while self.state is State.CONN_PEND:
-            # Make a break and handle incoming segments
-            self._handle_flow()
+                print(f'Server sent SYNACK (seq_nr: {self.seq_nr}, ack_nr: {ack_nr})')
             # Block for receiving ACK
             if Key.CONN_ACK in self.drop:
                 message = self.drop.pop(Key.CONN_ACK)
-                if self.seq_nr + 1 == message['ack']:
+                next_seq = self.safe_incr(self.seq_nr)
+                if next_seq == message['ack_nr']:
                     self.recv_win = message['win']
-                    self.seq_nr += 1
+                    self.seq_nr = next_seq
                     self.state = State.CONN_EST
-                    print(f'Server established connection (seq: {self.seq_nr})')
+                    print(f'Server established connection (seq_nr: {self.seq_nr})')
+            # In case ACK was lost but the next segment of data was received
+            if Key.DATA in self.drop:
+                self.state = State.CONN_EST
+                break
                 
 
     def recv(self) -> bytes:
         """ Send any incoming data to the application layer """
+        # We can only receive if a connection has been established
         if self.state is not State.CONN_EST:
             return
+        # Setting the state
         self.state = State.RECV
-        data = acked = buf = []
-        buf_size = self._window
+        # Initialising arrays
+        data = []
+        acked = []
+        # The server receives while the client does not disconnect
         while Key.FIN not in self.drop:
             self._handle_flow()
+            # Block for handling received data
             if Key.DATA in self.drop:
                 message = self.drop.pop(Key.DATA)
-                ack = message['seq'] + message['dlen']
-                print(f'Server received segment {message["seq"]}')
-                if ack not in acked:
-                    data.append((message['data'][:message['dlen']], ack))
-                    acked.append(ack)
-                # Send ack back
-                segment = self.pack_segment(ack_nr=ack, flag=Flag.ACK)
+                ack_nr = self.safe_incr(message['seq_nr'], message['dlen'])
+                print(f'Server received segment {message["seq_nr"]}')
+                # Only save the data if it was not yet acknowledged
+                if ack_nr not in acked:
+                    # Append the data without the padding bytes
+                    data.append((message['data'][:message['dlen']], ack_nr))
+                    acked.append(ack_nr)
+                # Acknowledge the received segment
+                segment = self.pack_segment(ack_nr=ack_nr, flag=Flag.ACK)
                 self._lossy_layer.send_segment(segment)
+                print(f'Server sent ACK {ack_nr}')
+        # Accept the disconnect request
+        self.state = State.CONN_EST
+        self._disconnect()
         # Sort the data according to the ACK numbers
         data.sort(key=lambda tup: tup[1])
         # Merge the data bytes into a single object
-        return b''.join([data[0] for i in data])
+        return b''.join([d for (d, _) in data])
 
 
     def close(self):
@@ -94,17 +105,25 @@ class BTCPServerSocket(BTCPSocket):
         # Only connected server can begin disconnect request and if the FIN segment was received
         if self.state in [State.OPEN, State.CONN_PEND] or not Key.FIN in self.drop:
             return
-        # Respond with FINACK
-        message = self.drop.pop(Key.FIN)
-        segment = self.pack_segment(flag=Flag.FINACK)
-        self._lossy_layer.send_segment(segment)
-        print('Server sent FINACK')
         self.state = State.DISC_PEND
+        timer = start_time = 0
+        # Server responds with FINACK
         while self.state is State.DISC_PEND:
             # Make a break and handle incoming segments
             self._handle_flow()
+            if Key.FIN in self.drop:
+                message = self.drop.pop(Key.FIN)
+                segment = self.pack_segment(ack_nr=self.safe_incr(message['seq_nr']) , flag=Flag.FINACK)
+                self._lossy_layer.send_segment(segment)
+                timer = 0
+                start_time = self.time()
+                print('Server sent FINACK')
             # Block for receiving ACK
-            if Key.DISC_ACK in self.drop:
+            elif Key.DISC_ACK in self.drop:
                 _ = self.drop.pop(Key.DISC_ACK)
-                self.state = State.CONN_EST
+                self.state = State.OPEN
                 print('Server terminated connection')
+            elif timer > 1000:
+                break
+            else:
+                timer = self.time() - start_time

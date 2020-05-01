@@ -8,7 +8,7 @@ from server_thread import ServerThread
 from client_thread import ClientThread
 
 timeout = 100
-winsize = 100
+winsize = 5
 intf = "lo"
 netem_add = "sudo tc qdisc add dev {} root netem".format(intf)
 netem_change = "sudo tc qdisc change dev {} root netem {}".format(intf, "{}")

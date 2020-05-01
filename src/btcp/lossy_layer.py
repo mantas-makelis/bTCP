@@ -2,6 +2,7 @@ import socket
 import select
 import threading
 from btcp.constants import SEGMENT_SIZE
+import random, time
 
 # Continuously read from the socket and whenever a segment arrives, 
 # call the lossy_layer_input method of the associated socket. 
@@ -38,4 +39,12 @@ class LossyLayer:
 
     # Put the segment into the network
     def send_segment(self, segment):
-        self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+        # Testing loss
+        loss = random.uniform(0, 1)
+        if loss < 0.95:
+            self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+        dup = random.uniform(0, 1)
+
+        # Testing duplicates
+        if dup < 0.1:
+            self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
