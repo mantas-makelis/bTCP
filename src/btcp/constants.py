@@ -17,5 +17,3 @@ DATA_FORMAT= f'{PAYLOAD_SIZE}s'
 MAX_ATTEMPTS = 3
 SEGMENT_KEYS = ['seq', 'ack', 'flag', 'win', 'dlen', 'cksum', 'data']
 BUFFER_SIZE = 5
-
-Segment = namedtuple('Segment', ['sent', 'seq', 'exp_ack', 'is_ack', 'timer', 'start_time', 'packed'])

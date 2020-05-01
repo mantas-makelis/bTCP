@@ -1,8 +1,8 @@
 from btcp.btcp_socket import BTCPSocket
 from btcp.lossy_layer import LossyLayer
-from btcp.constants import CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT, MAX_ATTEMPTS, DATA_FORMAT, PAYLOAD_SIZE, Segment
+from btcp.constants import CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT, MAX_ATTEMPTS, DATA_FORMAT, PAYLOAD_SIZE
 from btcp.enums import State, Flag, Key
-from collections import namedtuple
+from btcp.segment import Segment
 import array, struct
 
 class BTCPClientSocket(BTCPSocket):
@@ -62,7 +62,7 @@ class BTCPClientSocket(BTCPSocket):
             self.state = State.OPEN
 
 
-    def meta_data(self, data: bytes) -> [namedtuple]:
+    def meta_data(self, data: bytes) -> [Segment]:
         size = len(data)
         last = size % PAYLOAD_SIZE
         length = int(size / PAYLOAD_SIZE)
@@ -76,16 +76,18 @@ class BTCPClientSocket(BTCPSocket):
                 start += PAYLOAD_SIZE
                 to += PAYLOAD_SIZE
         split_data.append(data[to:to+last])
-        
-        is_ack, sent = False
-        timer, start_time = 0
+    
 
         segments = []
         for i, data in enumerate(split_data):
-            seq_nr = self.seq_nr + i * PAYLOAD_SIZE
-            exp_ack = seq_nr + len(data)
+            seq = self.seq_nr + i * PAYLOAD_SIZE
+            exp_ack = seq + len(data)
             packed = self.pack_segment(data=data)
-            segments.append(Segment(sent, seq_nr, exp_ack, is_ack, timer, start_time, packed))
+            segments.append(
+                Segment(seq=seq,
+                        exp_ack=exp_ack, 
+                        packed=packed)
+                        )
         return segments
 
 
@@ -132,7 +134,7 @@ class BTCPClientSocket(BTCPSocket):
                 if segment.sent:
                     segment.timer = self.time() - segment.start_time
 
-            self.handle_flow()
+            self._handle_flow()
 
 
     def disconnect(self):
