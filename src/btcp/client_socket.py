@@ -4,6 +4,7 @@ from btcp.constants import *
 import random
 import time
 
+
 # bTCP client socket
 # A client application makes use of the services provided by bTCP by calling connect, send, disconnect, and close
 class BTCPClientSocket(BTCPSocket):
@@ -51,7 +52,6 @@ class BTCPClientSocket(BTCPSocket):
                 # Send the segment
                 self.send(segment)
 
-
             elif self.buffer:
 
                 # Get message
@@ -70,6 +70,7 @@ class BTCPClientSocket(BTCPSocket):
                     segment = self.make_segment(seq_nr=self._seq_nr,
                                                 ack_nr=self._ack_nr,
                                                 flag=ACK)
+
                     # The connection is established
                     self.con_est = True
 
@@ -78,14 +79,13 @@ class BTCPClientSocket(BTCPSocket):
                     # Send the segment
                     self.send(segment)
                 else:
-                    self.buffer.push(message)
+                    self.buffer.append(message)
                     current_timer = time.time() - start_timer
             else:
                 current_timer = time.time() - start_timer
 
         if syn_count > MAX_ATTEMPTS:
             self.close()
-
 
     # Send data originating from the application in a reliable way to the server
     def send(self, segment):
@@ -123,7 +123,6 @@ class BTCPClientSocket(BTCPSocket):
                 # Send the segment
                 self.send(segment)
 
-
             elif self.buffer:
 
                 # Get message
@@ -150,7 +149,7 @@ class BTCPClientSocket(BTCPSocket):
                     # Send the segment
                     self.send(segment)
                 else:
-                    self.buffer.push(message)
+                    self.buffer.append(message)
                     current_timer = time.time() - start_timer
             else:
                 current_timer = time.time() - start_timer

@@ -1,8 +1,8 @@
 #!/usr/local/bin/python3
 
 import argparse
-from btcp.constants import *
 from btcp.client_socket import BTCPClientSocket
+
 
 def main():
     parser = argparse.ArgumentParser()

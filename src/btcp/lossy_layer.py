@@ -3,6 +3,7 @@ import select
 import threading
 from btcp.constants import SEGMENT_SIZE
 
+
 # Continuously read from the socket and whenever a segment arrives, 
 # call the lossy_layer_input method of the associated socket. 
 # When flagged, return from the function.
