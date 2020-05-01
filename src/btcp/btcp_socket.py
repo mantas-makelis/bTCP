@@ -3,6 +3,7 @@ import os
 import struct
 import time
 import socket
+from btcp.constants import *
 
 
 class BTCPSocket:
@@ -51,7 +52,7 @@ class BTCPSocket:
                      data=b'0',
                      seq_nr=0,
                      ack_nr=0,
-                     flag=0):
+                     flag=NONE):
         """[Creates a segment given the data]
 
         Arguments:
