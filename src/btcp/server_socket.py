@@ -71,10 +71,13 @@ class BTCPServerSocket(BTCPSocket):
             if Key.DATA in self.drop:
                 message = self.drop.pop(Key.DATA)
                 ack = message['seq'] + message['dlen']
+                print(f'Server received segment {message["seq"]}')
                 if ack not in acked:
                     data.append((message['data'][:message['dlen']], ack))
                     acked.append(ack)
-                segment = self.pack_segment(ack_nr=ack)
+                # Send ack back
+                segment = self.pack_segment(ack_nr=ack, flag=Flag.ACK)
+                self._lossy_layer.send_segment(segment)
         # Sort the data according to the ACK numbers
         data.sort(key=lambda tup: tup[1])
         # Merge the data bytes into a single object

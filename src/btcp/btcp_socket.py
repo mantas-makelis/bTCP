@@ -59,7 +59,7 @@ class BTCPSocket:
     
 
     def pack_segment(self, ack_nr=0, data=b'', flag=Flag.NONE):
-        """ Creates a segment with the given data and current sequence and acknoledgement numbers """
+        """ Creates a segment with the given data and current sequence and acknowledgement numbers """
         data_size = len(data)
         if data_size > PAYLOAD_SIZE:
             return # TODO: throw an error

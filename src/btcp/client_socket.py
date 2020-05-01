@@ -94,7 +94,10 @@ class BTCPClientSocket(BTCPSocket):
     def send(self, data: bytes) -> None:
         """ Send data originating from the application in a reliable way to the server """
         if self.state is not State.CONN_EST:
-            return        
+            return
+
+        self.state = State.TRANS
+
         # Meta data for a segment
         segments = self.meta_data(data)
         
@@ -108,19 +111,21 @@ class BTCPClientSocket(BTCPSocket):
             # Sent segments
             for segment in segments[lower:upper]:
                 # TODO: check if the window is available ???
-                if not segment.sent or segment.timer < self._timeout:
+                if not segment.sent or segment.timer > self._timeout:
                     self._lossy_layer.send_segment(segment.packed)
+                    print(f'Client sent segment {segment.seq}')
                     segment.sent = True
                     segment.start_time = self.time()
             
             # check messages
             if Key.RECV_ACK in self.drop:
                 message = self.drop.pop(Key.RECV_ACK)
+                print(f"Client received ACK {message['ack']}")
                 for segment in segments[lower:upper]:
                     if message['ack'] != segment.exp_ack :
                         continue
-                    segment.ack = True
-                    if message['seq'] == segments[lower].seq:
+                    segment.is_ack = True
+                    if message['ack'] == segments[lower].exp_ack:
                         steps = 0
                         for segment in segments[lower:upper]:
                             if segment.is_ack:
