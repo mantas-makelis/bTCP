@@ -1,9 +1,9 @@
 from btcp.btcp_socket import BTCPSocket
-from btcp.lossy_layer import LossyLayer
-from btcp.constants import CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT, MAX_ATTEMPTS, DATA_FORMAT, PAYLOAD_SIZE
+from btcp.constants import CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT, MAX_ATTEMPTS, PAYLOAD_SIZE
 from btcp.enums import State, Flag, Key
+from btcp.lossy_layer import LossyLayer
 from btcp.segment import Segment
-import array, struct, time
+
 
 class BTCPClientSocket(BTCPSocket):
     """ bTCP client socket
@@ -17,7 +17,6 @@ class BTCPClientSocket(BTCPSocket):
     def lossy_layer_input(self, segment: bytes, address) -> None:
         """ Called by the lossy layer from another thread whenever a segment arrives. """
         self.buffer.put(segment, block=True, timeout=100)
-        
 
     def connect(self) -> None:
         """ Perform a three-way handshake to establish a connection """
@@ -50,7 +49,8 @@ class BTCPClientSocket(BTCPSocket):
                     segment = self.pack_segment(ack_nr=message['seq_nr'], flag=Flag.ACK)
                     self._lossy_layer.send_segment(segment)
                     self.state = State.CONN_EST
-                    print(f'Client sent ACK (seq: {self.seq_nr}, ack: {self.safe_incr(message["seq_nr"])}) and established connection')
+                    print(
+                        f'Client sent ACK (seq: {self.seq_nr}, ack: {self.safe_incr(message["seq_nr"])}) and established connection')
                 # Given an incorrect seq nr reset the connect attempt
                 else:
                     syn_count = 0
@@ -61,11 +61,10 @@ class BTCPClientSocket(BTCPSocket):
         if self.state is not State.CONN_EST and syn_count >= MAX_ATTEMPTS:
             self.state = State.OPEN
 
-
-    def split_data(self, data:bytes) -> [bytes]:
+    def split_data(self, data: bytes) -> [bytes]:
         """ Splits the data into chunks of 1008 bytes """
         size = len(data)
-        last = size % PAYLOAD_SIZE # remaining data for the last chunk
+        last = size % PAYLOAD_SIZE  # remaining data for the last chunk
         length = int(size / PAYLOAD_SIZE)
         start = 0
         to = PAYLOAD_SIZE if size >= PAYLOAD_SIZE else 0
@@ -76,9 +75,8 @@ class BTCPClientSocket(BTCPSocket):
             if not i == length - 1:
                 start += PAYLOAD_SIZE
                 to += PAYLOAD_SIZE
-        split_data.append(data[to:to+last])
+        split_data.append(data[to:to + last])
         return split_data
-
 
     def meta_data(self, data: bytes) -> [Segment]:
         """ Turns the data bytes into segments with their meta data """
@@ -90,7 +88,6 @@ class BTCPClientSocket(BTCPSocket):
             segments.append(Segment(seq=seq_nr, exp_ack=exp_ack, data=data))
         return segments
 
-
     def send(self, data: bytes) -> None:
         """ Send data originating from the application in a reliable way to the server """
         # Only allow sending if the connection is established
@@ -101,7 +98,7 @@ class BTCPClientSocket(BTCPSocket):
         segments = self.meta_data(data)
         seg_end = len(segments)
         # Window pointers
-        lower = 0 
+        lower = 0
         upper = self.recv_win if seg_end > self.recv_win else seg_end
         # Send the data until all segments were acknowledged
         while lower != upper:
@@ -119,7 +116,7 @@ class BTCPClientSocket(BTCPSocket):
                 print(f"Client received ACK {message['ack_nr']}")
                 # Find a segment which was acked
                 for segment in segments[lower:upper]:
-                    if message['ack_nr'] != segment.exp_ack :
+                    if message['ack_nr'] != segment.exp_ack:
                         continue
                     segment.is_acked = True
                     # Given that the first segment in the window is acked
@@ -137,7 +134,6 @@ class BTCPClientSocket(BTCPSocket):
                     segment.timer = self.time() - segment.start_time
             self._handle_flow()
         self.state = State.CONN_EST
-
 
     def disconnect(self) -> None:
         """ Perform a handshake to terminate a connection """
@@ -178,7 +174,6 @@ class BTCPClientSocket(BTCPSocket):
         # Reset the state if the disconnect attempt failed
         if self.state is not State.OPEN and fin_count >= MAX_ATTEMPTS:
             self.state = State.OPEN
-
 
     def close(self) -> None:
         """ Clean up any state """

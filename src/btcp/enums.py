@@ -1,5 +1,6 @@
 from enum import Enum, unique
 
+
 @unique
 class Flag(Enum):
     """ Different flags for bTCP header """
@@ -10,6 +11,7 @@ class Flag(Enum):
     FIN = 4
     FINACK = 5
 
+
 @unique
 class State(Enum):
     """ Different states for a bTCP socket """
@@ -19,6 +21,7 @@ class State(Enum):
     DISC_PEND = 3
     RECV = 4
     TRANS = 5
+
 
 @unique
 class Key(Enum):

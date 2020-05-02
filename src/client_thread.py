@@ -1,5 +1,5 @@
-from stoppable_thread import StoppableThread
 from btcp.client_socket import BTCPClientSocket
+from stoppable_thread import StoppableThread
 
 
 class ClientThread(StoppableThread):

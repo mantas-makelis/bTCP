@@ -1,8 +1,8 @@
 from btcp.btcp_socket import BTCPSocket
-from btcp.lossy_layer import LossyLayer
 from btcp.constants import SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT
 from btcp.enums import State, Flag, Key
-import time
+from btcp.lossy_layer import LossyLayer
+
 
 class BTCPServerSocket(BTCPSocket):
     """ The bTCP server socket
@@ -13,18 +13,15 @@ class BTCPServerSocket(BTCPSocket):
         super().__init__(window, timeout)
         self._lossy_layer = LossyLayer(self, SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT)
 
-
     def lossy_layer_input(self, segment, address):
         """ Called by the lossy layer from another thread whenever a segment arrives """
         self.buffer.put(segment, block=True, timeout=100)
 
-    
     def idle(self):
         self._handle_flow()
         if Key.FIN in self.drop:
             self._disconnect()
-    
-    
+
     def accept(self):
         """ Wait for the client to initiate a three-way handshake """
         # Only non-connected server can accept a connection
@@ -57,7 +54,6 @@ class BTCPServerSocket(BTCPSocket):
             if Key.DATA in self.drop:
                 self.state = State.CONN_EST
                 break
-                
 
     def recv(self) -> bytes:
         """ Send any incoming data to the application layer """
@@ -94,12 +90,10 @@ class BTCPServerSocket(BTCPSocket):
         # Merge the data bytes into a single object
         return b''.join([d for (d, _) in data])
 
-
     def close(self):
         """ Clean up any state """
         self._lossy_layer.destroy()
 
-    
     def _disconnect(self):
         """ Internal function which handles the disconnect attempt """
         # Only connected server can begin disconnect request and if the FIN segment was received
@@ -113,7 +107,7 @@ class BTCPServerSocket(BTCPSocket):
             self._handle_flow()
             if Key.FIN in self.drop:
                 message = self.drop.pop(Key.FIN)
-                segment = self.pack_segment(ack_nr=self.safe_incr(message['seq_nr']) , flag=Flag.FINACK)
+                segment = self.pack_segment(ack_nr=self.safe_incr(message['seq_nr']), flag=Flag.FINACK)
                 self._lossy_layer.send_segment(segment)
                 timer = 0
                 start_time = self.time()

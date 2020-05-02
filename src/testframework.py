@@ -1,11 +1,10 @@
+import sys
+import time
 import unittest
 from socket import *
-import time
-import sys
-from btcp.client_socket import BTCPClientSocket
-from btcp.server_socket import BTCPServerSocket
-from server_thread import ServerThread
+
 from client_thread import ClientThread
+from server_thread import ServerThread
 
 timeout = 100
 winsize = 5
@@ -61,7 +60,6 @@ class TestbTCPFramework(unittest.TestCase):
         self.server = ServerThread(winsize, timeout)
         self.client = ClientThread(winsize, timeout)
 
-
     def tearDown(self):
         """Clean up after testing"""
         # clean the environment
@@ -71,7 +69,6 @@ class TestbTCPFramework(unittest.TestCase):
         # close server
         self.server.stop()
         self.client.stop()
-
 
     def test_ideal_network(self):
         """reliability over an ideal framework"""
@@ -88,90 +85,84 @@ class TestbTCPFramework(unittest.TestCase):
 
         # content received by server matches the content sent by client
 
-
     # def test_flipping_network(self):
     #     """reliability over network with bit flips (which sometimes results in lower layer packet loss)"""
-        # setup environment
-        # run_command(netem_change.format("corrupt 1%"))
+    # setup environment
+    # run_command(netem_change.format("corrupt 1%"))
 
-        # launch localhost client connecting to server
+    # launch localhost client connecting to server
 
-        # client sends content to server
+    # client sends content to server
 
-        # server receives content from client
+    # server receives content from client
 
-        # content received by server matches the content sent by client
-
+    # content received by server matches the content sent by client
 
     # def test_duplicates_network(self):
     #     """reliability over network with duplicate packets"""
-        # setup environment
-        # run_command(netem_change.format("duplicate 10%"))
+    # setup environment
+    # run_command(netem_change.format("duplicate 10%"))
 
-        # launch localhost client connecting to server
+    # launch localhost client connecting to server
 
-        # client sends content to server
+    # client sends content to server
 
-        # server receives content from client
+    # server receives content from client
 
-        # content received by server matches the content sent by client
-
+    # content received by server matches the content sent by client
 
     # def test_lossy_network(self):
     #     """reliability over network with packet loss"""
-        # setup environment
-        # run_command(netem_change.format("loss 10% 25%"))
+    # setup environment
+    # run_command(netem_change.format("loss 10% 25%"))
 
-        # launch localhost client connecting to server
+    # launch localhost client connecting to server
 
-        # client sends content to server
+    # client sends content to server
 
-        # server receives content from client
+    # server receives content from client
 
-        # content received by server matches the content sent by client
-
+    # content received by server matches the content sent by client
 
     # def test_reordering_network(self):
     #     """reliability over network with packet reordering"""
-        # setup environment
-        # run_command(netem_change.format("delay 20ms reorder 25% 50%"))
+    # setup environment
+    # run_command(netem_change.format("delay 20ms reorder 25% 50%"))
 
-        # launch localhost client connecting to server
+    # launch localhost client connecting to server
 
-        # client sends content to server
+    # client sends content to server
 
-        # server receives content from client
+    # server receives content from client
 
-        # content received by server matches the content sent by client
-
+    # content received by server matches the content sent by client
 
     # def test_delayed_network(self):
     #     """reliability over network with delay relative to the timeout value"""
-        # setup environment
-        # run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
+    # setup environment
+    # run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
 
-        # launch localhost client connecting to server
+    # launch localhost client connecting to server
 
-        # client sends content to server
+    # client sends content to server
 
-        # server receives content from client
+    # server receives content from client
 
-        # content received by server matches the content sent by client
-
+    # content received by server matches the content sent by client
 
     # def test_allbad_network(self):
     #     """reliability over network with all of the above problems"""
 
-        # setup environment
-        # run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
+    # setup environment
+    # run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
 
-        # launch localhost client connecting to server
+    # launch localhost client connecting to server
 
-        # client sends content to server
+    # client sends content to server
 
-        # server receives content from client
+    # server receives content from client
 
-        # content received by server matches the content sent by client
+    # content received by server matches the content sent by client
 
 
 #    def test_command(self):
@@ -183,6 +174,7 @@ class TestbTCPFramework(unittest.TestCase):
 if __name__ == "__main__":
     # Parse command line arguments
     import argparse
+
     parser = argparse.ArgumentParser(description="bTCP tests")
     parser.add_argument("-w", "--window", help="Define bTCP window size used", type=int, default=100)
     parser.add_argument("-t", "--timeout", help="Define the timeout value used (ms)", type=int, default=timeout)
@@ -190,7 +182,7 @@ if __name__ == "__main__":
     timeout = args.timeout
     winsize = args.window
 
-    # Pass the extra arguments to unittestaa
+    # Pass the extra arguments to unit test
     sys.argv[1:] = extra
 
     # Start test suite
