@@ -3,9 +3,10 @@ import queue
 import random
 import struct
 import time
+from typing import Optional
 
 from btcp.constants import SEGMENT_KEYS, HEADER_FORMAT, DATA_FORMAT, PAYLOAD_SIZE, TWO_BYTES
-from btcp.enums import Flag, State, Key
+from btcp.enums import Flag, State
 
 
 class BTCPSocket:
@@ -18,53 +19,27 @@ class BTCPSocket:
         self.state = State.OPEN
         self.seq_nr = self.start_random_sequence()
         self.buffer = queue.Queue(window)
-        self.drop = {}
 
-    def _handle_flow(self) -> None:
-        """ Decides where to put a received message """
-        # Check the buffer for incoming messages
+    def handle_flow(self, expected: [Flag]) -> Optional[dict]:
+        """ Checks if any message was received and returns it if it was """
         try:
             segment = self.buffer.get(block=False)
             message = self.unpack_segment(segment)
-            # Throw away the segment if the checksum is invalid
-            if not self.valid_checksum(message):
-                return
+            return message if message['flag'] in expected and self.valid_checksum(message) else None
         except queue.Empty:
-            return
-        flag = message['flag']
-        # Connection attempt
-        if self.state is State.CONN_PEND and flag is Flag.SYN:
-            self.drop[Key.SYN] = message
-        # Connection approval from the server
-        elif self.state is State.CONN_PEND and flag is Flag.SYNACK:
-            self.drop[Key.SYNACK] = message
-        # Connection approval from the client
-        elif self.state is State.CONN_PEND and flag is Flag.ACK:
-            self.drop[Key.CONN_ACK] = message
-        # Termination request
-        elif flag is Flag.FIN:
-            self.drop[Key.FIN] = message
-        # Termination approval from the server
-        elif self.state is State.DISC_PEND and flag is Flag.FINACK:
-            self.drop[Key.FINACK] = message
-        # Termination approval from the client
-        elif self.state is State.DISC_PEND and flag is Flag.ACK:
-            self.drop[Key.DISC_ACK] = message
-        # While transmitting
-        elif self.state is State.TRANS and flag is Flag.ACK:
-            self.drop[Key.RECV_ACK] = message
-        # While receiving
-        elif (self.state is State.RECV or self.state is State.CONN_PEND) and flag is Flag.NONE:
-            self.drop[Key.DATA] = message
+            return None
+
+    def valid_ack(self, message: dict, addition: int = 1):
+        """ Checks if the received ACK number is good """
+        return self.safe_incr(self.seq_nr, addition) == message['ack_nr']
 
     def pack_segment(self, seq_nr: int = -1, ack_nr: int = 0, data: bytes = b'', flag: Flag = Flag.NONE) -> bytes:
         """ Creates a segment with the given data and current sequence and acknowledgement numbers """
-        if seq_nr == -1:
-            seq_nr = self.seq_nr
-        print(seq_nr)
         data_size = len(data)
         if data_size > PAYLOAD_SIZE:
             raise ValueError
+        if seq_nr == -1:
+            seq_nr = self.seq_nr
         win_size = self._window - self.buffer.qsize()
         header = struct.pack(HEADER_FORMAT,
                              seq_nr,  # sequence number (halfword, 2 bytes)

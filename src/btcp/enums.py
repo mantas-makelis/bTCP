@@ -20,17 +20,11 @@ class State(Enum):
     CONN_EST = 2
     DISC_PEND = 3
     RECV = 4
-    TRANS = 5
+    SEND = 5
 
 
 @unique
 class Key(Enum):
     """ Different keys to access drop dictionary for specific messages """
-    SYN = 0
-    SYNACK = 1
-    CONN_ACK = 2
-    FIN = 3
-    FINACK = 4
-    DISC_ACK = 5
-    RECV_ACK = 6
-    DATA = 7
+    MISS_ACK = 0
+    RECV_FIN = 1

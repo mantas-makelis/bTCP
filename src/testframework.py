@@ -6,7 +6,7 @@ from socket import *
 from client_thread import ClientThread
 from server_thread import ServerThread
 
-timeout = 100
+timeout = 200
 winsize = 5
 intf = "lo"
 netem_add = "sudo tc qdisc add dev {} root netem".format(intf)

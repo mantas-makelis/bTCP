@@ -13,7 +13,7 @@ class ClientThread(StoppableThread):
         """ The main loop of the client """
         self.socket.connect()
 
-        with open('src/inputs/input.file', 'rb') as f:
+        with open('inputs/input.file', 'rb') as f:
             file_bytes = f.read()
         self.socket.send(file_bytes)
 

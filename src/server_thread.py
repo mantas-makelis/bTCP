@@ -17,9 +17,7 @@ class ServerThread(StoppableThread):
 
         file_bytes = self.socket.recv()
 
-        with open('src/inputs/output.file', 'w') as f:
-            output = file_bytes.decode('utf-8')
-            output = os.linesep.join([s for s in output.splitlines() if s])
-            f.write(output)
+        with open('inputs/output.file', 'wb') as f:
+            f.write(file_bytes)
 
         self.socket.close()
