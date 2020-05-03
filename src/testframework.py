@@ -6,7 +6,7 @@ from socket import *
 from client_thread import ClientThread
 from server_thread import ServerThread
 
-timeout = 1
+timeout = 100
 winsize = 5
 intf = "lo"
 netem_add = "sudo tc qdisc add dev {} root netem".format(intf)
@@ -70,65 +70,65 @@ class TestbTCPFramework(unittest.TestCase):
         recv = self.server.get_recv_file()
         self.assertEqual(sent, recv)
 
-    # def test_flipping_network(self):
-    #     """reliability over network with bit flips (which sometimes results in lower layer packet loss)"""
-    #     # setup environment
-    #     # run_command(netem_change.format("corrupt 1%"))
-    #     self.server.start()
-    #     self.client.start()
-    #     sent = self.client.get_sent_file()
-    #     recv = self.server.get_recv_file()
-    #     self.assertEqual(sent, recv)
+    def test_flipping_network(self):
+        """reliability over network with bit flips (which sometimes results in lower layer packet loss)"""
+        # setup environment
+        # run_command(netem_change.format("corrupt 1%"))
+        self.server.start()
+        self.client.start()
+        sent = self.client.get_sent_file()
+        recv = self.server.get_recv_file()
+        self.assertEqual(sent, recv)
 
-    # def test_duplicates_network(self):
-    #     """reliability over network with duplicate packets"""
-    #     # setup environment
-    #     # run_command(netem_change.format("duplicate 10%"))
-    #     self.server.start()
-    #     self.client.start()
-    #     sent = self.client.get_sent_file()
-    #     recv = self.server.get_recv_file()
-    #     self.assertEqual(sent, recv)
+    def test_duplicates_network(self):
+        """reliability over network with duplicate packets"""
+        # setup environment
+        # run_command(netem_change.format("duplicate 10%"))
+        self.server.start()
+        self.client.start()
+        sent = self.client.get_sent_file()
+        recv = self.server.get_recv_file()
+        self.assertEqual(sent, recv)
 
-    # def test_lossy_network(self):
-    #     """reliability over network with packet loss"""
-    #     # setup environment
-    #     # run_command(netem_change.format("loss 10% 25%"))
-    #     self.server.start()
-    #     self.client.start()
-    #     sent = self.client.get_sent_file()
-    #     recv = self.server.get_recv_file()
-    #     self.assertEqual(sent, recv)
+    def test_lossy_network(self):
+        """reliability over network with packet loss"""
+        # setup environment
+        # run_command(netem_change.format("loss 10% 25%"))
+        self.server.start()
+        self.client.start()
+        sent = self.client.get_sent_file()
+        recv = self.server.get_recv_file()
+        self.assertEqual(sent, recv)
 
-    # def test_reordering_network(self):
-    #     """reliability over network with packet reordering"""
-    #     # setup environment
-    #     # run_command(netem_change.format("delay 20ms reorder 25% 50%"))
-    #     self.server.start()
-    #     self.client.start()
-    #     sent = self.client.get_sent_file()
-    #     recv = self.server.get_recv_file()
-    #     self.assertEqual(sent, recv)
+    def test_reordering_network(self):
+        """reliability over network with packet reordering"""
+        # setup environment
+        # run_command(netem_change.format("delay 20ms reorder 25% 50%"))
+        self.server.start()
+        self.client.start()
+        sent = self.client.get_sent_file()
+        recv = self.server.get_recv_file()
+        self.assertEqual(sent, recv)
 
-    # def test_delayed_network(self):
-    #     """reliability over network with delay relative to the timeout value"""
-    #     # setup environment
-    #     # run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
-    #     self.server.start()
-    #     self.client.start()
-    #     sent = self.client.get_sent_file()
-    #     recv = self.server.get_recv_file()
-    #     self.assertEqual(sent, recv)
+    def test_delayed_network(self):
+        """reliability over network with delay relative to the timeout value"""
+        # setup environment
+        # run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
+        self.server.start()
+        self.client.start()
+        sent = self.client.get_sent_file()
+        recv = self.server.get_recv_file()
+        self.assertEqual(sent, recv)
 
-    # def test_allbad_network(self):
-    #     """reliability over network with all of the above problems"""
-    #     # setup environment
-    #     # run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
-    #     self.server.start()
-    #     self.client.start()
-    #     sent = self.client.get_sent_file()
-    #     recv = self.server.get_recv_file()
-    #     self.assertEqual(sent, recv)
+    def test_allbad_network(self):
+        """reliability over network with all of the above problems"""
+        # setup environment
+        # run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
+        self.server.start()
+        self.client.start()
+        sent = self.client.get_sent_file()
+        recv = self.server.get_recv_file()
+        self.assertEqual(sent, recv)
 
 if __name__ == "__main__":
     # Parse command line arguments
