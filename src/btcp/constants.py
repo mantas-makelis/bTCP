@@ -16,3 +16,4 @@ DATA_FORMAT = f'{PAYLOAD_SIZE}s'
 MAX_ATTEMPTS = 10
 SEGMENT_KEYS = ['seq_nr', 'ack_nr', 'flag', 'win', 'dlen', 'cksum', 'data']
 BUFFER_SIZE = 5
+FIN_TIMEOUT = 3000  # in reality it should be around 30 seconds up to 2 minutes

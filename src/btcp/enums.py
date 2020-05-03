@@ -21,10 +21,3 @@ class State(Enum):
     DISC_PEND = 3
     RECV = 4
     SEND = 5
-
-
-@unique
-class Key(Enum):
-    """ Different keys to access drop dictionary for specific messages """
-    MISS_ACK = 0
-    RECV_FIN = 1

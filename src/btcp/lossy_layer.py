@@ -12,9 +12,11 @@ def handle_incoming_segments(bTCP_sock, event, udp_sock):
         # We do not block here, because we might never check the loop condition in that case
         rlist, wlist, elist = select.select([udp_sock], [], [], 1)
         if rlist:
-            segment, address = udp_sock.recvfrom(SEGMENT_SIZE)
-            bTCP_sock.lossy_layer_input(segment, address)
-
+            try:
+                segment, address = udp_sock.recvfrom(SEGMENT_SIZE)
+                bTCP_sock.lossy_layer_input(segment, address)
+            except ConnectionResetError:
+                pass
 
 # The lossy layer emulates the network layer in that it provides bTCP with 
 # an unreliable segment delivery service between a and b. When the lossy layer is created, 
@@ -39,11 +41,14 @@ class LossyLayer:
 
     # Put the segment into the network
     def send_segment(self, segment):
-        # Testing loss
-        loss = random.uniform(0, 1)
-        if loss < 0.95:
-            self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
-        # Testing duplicates
-        dup = random.uniform(0, 1)
-        if dup < 0.1:
-            self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+
+        self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+
+        # # Testing loss
+        # loss = random.uniform(0, 1)
+        # if loss < 1:
+        #     self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+        # # Testing duplicates
+        # dup = random.uniform(0, 1)
+        # if dup < 0:
+        #     self._udp_sock.sendto(segment, (self._b_ip, self._b_port))

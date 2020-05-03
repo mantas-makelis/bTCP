@@ -7,7 +7,7 @@ from client_thread import ClientThread
 from server_thread import ServerThread
 
 timeout = 200
-winsize = 5
+winsize = 100
 intf = "lo"
 netem_add = "sudo tc qdisc add dev {} root netem".format(intf)
 netem_change = "sudo tc qdisc change dev {} root netem {}".format(intf, "{}")
@@ -21,16 +21,12 @@ def run_command_with_output(command, input=None, cwd=None, shell=True):
         process = subprocess.Popen(command, cwd=cwd, shell=shell, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     except Exception:
         print("problem running command : \n   ", str(command))
-
     # no pipes set for stdin/stdout/stdout streams so does effectively only just wait for process ends  (same as process.wait()
     [stdoutdata, stderrdata] = process.communicate(input)
-
     if process.returncode:
         print(stderrdata)
         print("problem running command : \n   ", str(command), " ", process.returncode)
-
     return stdoutdata
-
 
 def run_command(command, cwd=None, shell=True):
     """run command with no output piping"""
@@ -41,9 +37,7 @@ def run_command(command, cwd=None, shell=True):
         print(str(process))
     except Exception as inst:
         print("1. problem running command : \n   ", str(command), "\n problem : ", str(inst))
-
     process.communicate()  # wait for the process to end
-
     if process.returncode:
         print("2. problem running command : \n   ", str(command), " ", process.returncode)
 
@@ -55,8 +49,6 @@ class TestbTCPFramework(unittest.TestCase):
         """Prepare for testing"""
         # default netem rule (does nothing)
         # run_command(netem_add)
-
-        # launch localhost server
         self.server = ServerThread(winsize, timeout)
         self.client = ClientThread(winsize, timeout)
 
@@ -64,112 +56,79 @@ class TestbTCPFramework(unittest.TestCase):
         """Clean up after testing"""
         # clean the environment
         # run_command(netem_del)
-
         time.sleep(1)
-        # close server
-        self.server.stop()
-        self.client.stop()
+
 
     def test_ideal_network(self):
         """reliability over an ideal framework"""
         # setup environment (nothing to set)
-
-        # launch localhost client connecting to server
         self.server.start()
         self.client.start()
-
-        # client sends content to server
-        # client.send(client.make_segment())
-
-        # server receives content from client
-
-        # content received by server matches the content sent by client
+        self.server.join()
+        self.client.join()
+        sent = self.client.get_sent_file()
+        recv = self.server.get_recv_file()
+        self.assertEqual(sent, recv)
 
     # def test_flipping_network(self):
     #     """reliability over network with bit flips (which sometimes results in lower layer packet loss)"""
-    # setup environment
-    # run_command(netem_change.format("corrupt 1%"))
-
-    # launch localhost client connecting to server
-
-    # client sends content to server
-
-    # server receives content from client
-
-    # content received by server matches the content sent by client
+    #     # setup environment
+    #     # run_command(netem_change.format("corrupt 1%"))
+    #     self.server.start()
+    #     self.client.start()
+    #     sent = self.client.get_sent_file()
+    #     recv = self.server.get_recv_file()
+    #     self.assertEqual(sent, recv)
 
     # def test_duplicates_network(self):
     #     """reliability over network with duplicate packets"""
-    # setup environment
-    # run_command(netem_change.format("duplicate 10%"))
-
-    # launch localhost client connecting to server
-
-    # client sends content to server
-
-    # server receives content from client
-
-    # content received by server matches the content sent by client
+    #     # setup environment
+    #     # run_command(netem_change.format("duplicate 10%"))
+    #     self.server.start()
+    #     self.client.start()
+    #     sent = self.client.get_sent_file()
+    #     recv = self.server.get_recv_file()
+    #     self.assertEqual(sent, recv)
 
     # def test_lossy_network(self):
     #     """reliability over network with packet loss"""
-    # setup environment
-    # run_command(netem_change.format("loss 10% 25%"))
-
-    # launch localhost client connecting to server
-
-    # client sends content to server
-
-    # server receives content from client
-
-    # content received by server matches the content sent by client
+    #     # setup environment
+    #     # run_command(netem_change.format("loss 10% 25%"))
+    #     self.server.start()
+    #     self.client.start()
+    #     sent = self.client.get_sent_file()
+    #     recv = self.server.get_recv_file()
+    #     self.assertEqual(sent, recv)
 
     # def test_reordering_network(self):
     #     """reliability over network with packet reordering"""
-    # setup environment
-    # run_command(netem_change.format("delay 20ms reorder 25% 50%"))
-
-    # launch localhost client connecting to server
-
-    # client sends content to server
-
-    # server receives content from client
-
-    # content received by server matches the content sent by client
+    #     # setup environment
+    #     # run_command(netem_change.format("delay 20ms reorder 25% 50%"))
+    #     self.server.start()
+    #     self.client.start()
+    #     sent = self.client.get_sent_file()
+    #     recv = self.server.get_recv_file()
+    #     self.assertEqual(sent, recv)
 
     # def test_delayed_network(self):
     #     """reliability over network with delay relative to the timeout value"""
-    # setup environment
-    # run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
-
-    # launch localhost client connecting to server
-
-    # client sends content to server
-
-    # server receives content from client
-
-    # content received by server matches the content sent by client
+    #     # setup environment
+    #     # run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
+    #     self.server.start()
+    #     self.client.start()
+    #     sent = self.client.get_sent_file()
+    #     recv = self.server.get_recv_file()
+    #     self.assertEqual(sent, recv)
 
     # def test_allbad_network(self):
     #     """reliability over network with all of the above problems"""
-
-    # setup environment
-    # run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
-
-    # launch localhost client connecting to server
-
-    # client sends content to server
-
-    # server receives content from client
-
-    # content received by server matches the content sent by client
-
-
-#    def test_command(self):
-#        #command=['dir','.']
-#        out = run_command_with_output("dir .")
-#        print(out)
-
+    #     # setup environment
+    #     # run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
+    #     self.server.start()
+    #     self.client.start()
+    #     sent = self.client.get_sent_file()
+    #     recv = self.server.get_recv_file()
+    #     self.assertEqual(sent, recv)
 
 if __name__ == "__main__":
     # Parse command line arguments

@@ -1,6 +1,6 @@
 from btcp.btcp_socket import BTCPSocket
 from btcp.constants import CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT, MAX_ATTEMPTS, PAYLOAD_SIZE
-from btcp.enums import State, Flag, Key
+from btcp.enums import State, Flag
 from btcp.lossy_layer import LossyLayer
 from btcp.segment import Segment
 
@@ -11,7 +11,7 @@ class BTCPClientSocket(BTCPSocket):
     """
 
     def __init__(self, window: int, timeout: int):
-        super().__init__(window, timeout)
+        super().__init__(window, timeout, 'Client')
         self._lossy_layer = LossyLayer(self, CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT)
 
     def lossy_layer_input(self, segment: bytes, address) -> None:
@@ -29,9 +29,7 @@ class BTCPClientSocket(BTCPSocket):
         while self.state is State.OPEN and syn_count < MAX_ATTEMPTS:
             # Send SYN if it was not yet sent or if the timer expired
             if syn_count == 0 or syn_timer > self._timeout:
-                syn_segment = self.pack_segment(flag=Flag.SYN)
-                print(f'[seq: {self.seq_nr}; ack: -] Client sent SYN', flush=True)
-                self._lossy_layer.send_segment(syn_segment)
+                self.post(seq_nr=self.seq_nr, ack_nr=0, flag=Flag.SYN)
                 syn_count += 1
                 syn_timer = 0
                 start_timer = self.time()
@@ -43,12 +41,8 @@ class BTCPClientSocket(BTCPSocket):
                     syn_count = 0
                     continue
                 # Send ACK for the received SYNACK
-                self.recv_win = message['win']
                 self.seq_nr = self.safe_incr(self.seq_nr)
-                ack_nr = self.safe_incr(message['seq_nr'])
-                ack_segment = self.pack_segment(ack_nr=ack_nr, flag=Flag.ACK)
-                print(f'[seq: {self.seq_nr}; ack: {ack_nr}] Client sent ACK', flush=True)
-                self._lossy_layer.send_segment(ack_segment)
+                self.acknowledge_post(message, Flag.ACK)
                 self.state = State.CONN_EST
                 print('-- Client established connection --')
             # Increase the timer
@@ -65,20 +59,23 @@ class BTCPClientSocket(BTCPSocket):
         # Window pointers
         lower = 0
         upper = self.recv_win if seg_end > self.recv_win else seg_end
+        recv_win_full = self.others_recv_win <= 0
+        recv_win_full_timer = start_time = 0
         # Send the data until all segments were acknowledged
         while lower != upper:
             # Send/resend segments
             for segment in segments[lower:upper]:
+                # Counting pending segments
+                in_flight = sum([s.sent - s.is_acked for s in segments[lower:upper]])
+                if self.others_recv_win - in_flight <= 0:
+                    break
                 if not segment.sent or segment.timer > self._timeout:
-                    packed = self.pack_segment(seq_nr=segment.seq, data=segment.data)
-                    print(f'[seq: {segment.seq}; ack: -] Client sent a segment', flush=True)
-                    self._lossy_layer.send_segment(packed)
+                    self.post(seq_nr=segment.seq_nr, ack_nr=0, flag=Flag.NONE, data=segment.data)
                     segment.sent = True
                     segment.timer = 0
                     segment.start_time = self.time()
             message = self.handle_flow(expected=[Flag.ACK])
             if message:
-                # print(f'[seq: -; ack: {message["ack_nr"]}] Client received segment ACK', flush=True)
                 # Find the segment which was acknowledged
                 for segment in segments[lower:upper]:
                     if message['ack_nr'] == segment.exp_ack:
@@ -94,7 +91,7 @@ class BTCPClientSocket(BTCPSocket):
             # Update timers for each sent and unacknowledged segment
             for segment in segments[lower:upper]:
                 if segment.sent:
-                    segment.timer = self.time() - segment.start_time
+                    segment.timer = self.time() - segment.start_time            
 
     def disconnect(self) -> None:
         """ Perform a three-way handshake to terminate a connection """
@@ -107,9 +104,7 @@ class BTCPClientSocket(BTCPSocket):
         while self.state is State.CONN_EST and fin_count < MAX_ATTEMPTS:
             # Send FIN if it was not yet sent or if the timer expired
             if fin_count == 0 or fin_timer > self._timeout:
-                fin_segment = self.pack_segment(flag=Flag.FIN)
-                print(f'[seq: {self.seq_nr}; ack: -] Client sent FIN', flush=True)
-                self._lossy_layer.send_segment(fin_segment)
+                self.post(seq_nr=self.seq_nr, ack_nr=0, flag=Flag.FIN)
                 fin_count += 1
                 fin_timer = 0
                 start_timer = self.time()
@@ -122,10 +117,7 @@ class BTCPClientSocket(BTCPSocket):
                     continue
                 # Send ACK for the received FINACK
                 self.seq_nr = self.safe_incr(self.seq_nr)
-                ack_nr = self.safe_incr(message['seq_nr'])
-                segment = self.pack_segment(ack_nr=ack_nr, flag=Flag.ACK)
-                print(f'[seq: {self.seq_nr}; ack: {ack_nr}] Client sent ACK', flush=True)
-                self._lossy_layer.send_segment(segment)
+                self.acknowledge_post(message, Flag.ACK)
                 self.state = State.OPEN
                 print('-- Client terminated connection --', flush=True)
             # Increase the timer
@@ -141,12 +133,11 @@ class BTCPClientSocket(BTCPSocket):
         segments = []
         for i, data in enumerate(split_data):
             seq_nr = self.safe_incr(self.seq_nr, addition=i * PAYLOAD_SIZE)
-            exp_ack = seq_nr + len(data)
-            segments.append(Segment(seq=seq_nr, exp_ack=exp_ack, data=data))
+            exp_ack = self.safe_incr(seq_nr, addition=len(data))
+            segments.append(Segment(data=data, seq_nr=seq_nr, exp_ack=exp_ack))
         return segments
 
-    @staticmethod
-    def split_data(data: bytes) -> [bytes]:
+    def split_data(self, data: bytes) -> [bytes]:
         """ Splits the data into chunks of 1008 bytes """
         size = len(data)
         last = size % PAYLOAD_SIZE  # remaining data for the last chunk
