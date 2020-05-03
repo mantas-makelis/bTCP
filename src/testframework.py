@@ -28,6 +28,7 @@ def run_command_with_output(command, input=None, cwd=None, shell=True):
         print("problem running command : \n   ", str(command), " ", process.returncode)
     return stdoutdata
 
+
 def run_command(command, cwd=None, shell=True):
     """run command with no output piping"""
     import subprocess
@@ -106,6 +107,7 @@ class TestbTCPFramework(unittest.TestCase):
         sent = self.client.get_sent_file()
         recv = self.server.get_recv_file()
         self.assertEqual(sent, recv)
+
 
 if __name__ == "__main__":
     # Parse command line arguments
