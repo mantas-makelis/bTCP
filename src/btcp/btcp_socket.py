@@ -12,10 +12,11 @@ from btcp.enums import Flag, State
 class BTCPSocket:
     """ Base bTCP socket on which both client and server sockets are based """
 
-    def __init__(self, window: int, timeout: int, name: str):
+    def __init__(self, window: int, timeout: int, name: str, show_prints: bool=False):
         self._window = window
         self._timeout = timeout
         self._name = name
+        self.show_prints = show_prints
         self.recv_win = 0
         self.others_recv_win = 0
         self.state = State.OPEN
@@ -44,7 +45,8 @@ class BTCPSocket:
 
     def post(self, seq_nr: int, ack_nr: int, flag: Flag, data: bytes = b''):
         segment = self.pack_segment(seq_nr=seq_nr, ack_nr=ack_nr, data=data, flag=flag)
-        print(f'[seq: {seq_nr}; ack: {ack_nr}] {self._name} sent {flag.name}', flush=True)
+        if self.show_prints:
+            print(f'[seq: {seq_nr}; ack: {ack_nr}] {self._name} sent {flag.name}', flush=True)
         self._lossy_layer.send_segment(segment)
 
     def valid_ack(self, message: dict, addition: int = 1) -> bool:

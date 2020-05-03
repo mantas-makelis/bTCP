@@ -10,13 +10,13 @@ class BTCPServerSocket(BTCPSocket):
     A server application makes use of the services provided by bTCP by calling accept, recv, and close
     """
 
-    def __init__(self, window, timeout):
-        super().__init__(window, timeout, 'Server')
+    def __init__(self, window: int, timeout: int, show_prints: bool):
+        super().__init__(window, timeout, 'Server', show_prints)
         self._lossy_layer = LossyLayer(self, SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT)
         self.temp = {}
         self.wraparound = 0
 
-    def lossy_layer_input(self, segment, address):
+    def lossy_layer_input(self, segment: bytes, address) -> None:
         """ Called by the lossy layer from another thread whenever a segment arrives """
         self.buffer.put(segment, block=True, timeout=50)
 
@@ -38,7 +38,8 @@ class BTCPServerSocket(BTCPSocket):
                 if self.valid_ack(message):
                     self.seq_nr = self.safe_incr(self.seq_nr)
                     self.state = State.CONN_EST
-                    print(f'-- Server established connection --', flush=True)
+                    if self.show_prints:
+                        print(f'-- Server established connection --', flush=True)
             # In case ACK was lost but the next segment of data was received
             elif message and message['flag'] is Flag.NONE and message['dlen'] > 0:
                 self.state = State.CONN_EST
@@ -112,7 +113,8 @@ class BTCPServerSocket(BTCPSocket):
             # Terminate the connection if the acknowledgement was received
             elif message and message['flag'] is Flag.ACK and self.valid_ack(message) or timer > FIN_TIMEOUT:
                 self.state = State.OPEN
-                print(f'-- Server terminated connection --', flush=True)
+                if self.show_prints:
+                    print(f'-- Server terminated connection --', flush=True)
             timer = self.time() - start_time
 
     def close(self) -> None:

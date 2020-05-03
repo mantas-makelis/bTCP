@@ -5,15 +5,15 @@ from threading import Thread
 class ClientThread(Thread):
     """ Simulates the client with a single socket """
 
-    def __init__(self, window, timeout):
+    def __init__(self, window, timeout, show_prints):
         super().__init__()
-        self.socket = BTCPClientSocket(window, timeout)
+        self.socket = BTCPClientSocket(window, timeout, show_prints)
         self.sent_bytes = b''
 
     def run(self):
         """ The main loop of the client """
         self.socket.connect()
-        with open('/home/guus/Uni/AI/Years/3/sem6/Networks/ronproj/bTCP/src/inputs/output.file', 'rb') as f:
+        with open('src/inputs/output.file', 'rb') as f:
             self.sent_bytes = f.read()
         self.socket.send(self.sent_bytes)
         self.socket.disconnect()

@@ -10,8 +10,8 @@ class BTCPClientSocket(BTCPSocket):
     A client application makes use of the services provided by bTCP by calling connect, send, disconnect, and close 
     """
 
-    def __init__(self, window: int, timeout: int):
-        super().__init__(window, timeout, 'Client')
+    def __init__(self, window: int, timeout: int, show_prints: bool):
+        super().__init__(window, timeout, 'Client', show_prints)
         self._lossy_layer = LossyLayer(self, CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT)
 
     def lossy_layer_input(self, segment: bytes, address) -> None:
@@ -45,7 +45,8 @@ class BTCPClientSocket(BTCPSocket):
                 self.ack_nr = self.safe_incr(message['seq_nr'])
                 self.acknowledge_post(message, Flag.ACK)
                 self.state = State.CONN_EST
-                print('-- Client established connection --')
+                if self.show_prints:
+                    print('-- Client established connection --')
             # Increase the timer
             syn_timer = self.time() - start_timer
 
@@ -122,7 +123,8 @@ class BTCPClientSocket(BTCPSocket):
                 self.seq_nr = self.safe_incr(self.seq_nr)
                 self.acknowledge_post(message, Flag.ACK)
                 self.state = State.OPEN
-                print('-- Client terminated connection --', flush=True)
+                if self.show_prints:
+                    print('-- Client terminated connection --', flush=True)
             # Increase the timer
             fin_timer = self.time() - start_timer
 
