@@ -13,6 +13,7 @@ class BTCPClientSocket(BTCPSocket):
     def __init__(self, window: int, timeout: int):
         super().__init__(window, timeout, 'Client')
         self._lossy_layer = LossyLayer(self, CLIENT_IP, CLIENT_PORT, SERVER_IP, SERVER_PORT)
+        self.seq_nr = 20
 
     def lossy_layer_input(self, segment: bytes, address) -> None:
         """ Called by the lossy layer from another thread whenever a segment arrives. """
@@ -29,7 +30,7 @@ class BTCPClientSocket(BTCPSocket):
         while self.state is State.OPEN and syn_count < MAX_ATTEMPTS:
             # Send SYN if it was not yet sent or if the timer expired
             if syn_count == 0 or syn_timer > self._timeout:
-                self.post(seq_nr=self.seq_nr, ack_nr=0, flag=Flag.SYN)
+                self.post(seq_nr=self.seq_nr, ack_nr=self.ack_nr, flag=Flag.SYN)
                 syn_count += 1
                 syn_timer = 0
                 start_timer = self.time()
@@ -42,6 +43,7 @@ class BTCPClientSocket(BTCPSocket):
                     continue
                 # Send ACK for the received SYNACK
                 self.seq_nr = self.safe_incr(self.seq_nr)
+                self.ack_nr = self.safe_incr(message['seq_nr'])
                 self.acknowledge_post(message, Flag.ACK)
                 self.state = State.CONN_EST
                 print('-- Client established connection --')
@@ -55,6 +57,7 @@ class BTCPClientSocket(BTCPSocket):
             return
         # Prepare the data for transfer
         segments = self.meta_data(data)
+        # self.seq_nr = segments[-1].exp_ack
         seg_end = len(segments)
         # Window pointers
         lower = 0
@@ -70,7 +73,7 @@ class BTCPClientSocket(BTCPSocket):
                 if self.others_recv_win - in_flight <= 0:
                     break
                 if not segment.sent or segment.timer > self._timeout:
-                    self.post(seq_nr=segment.seq_nr, ack_nr=0, flag=Flag.NONE, data=segment.data)
+                    self.post(seq_nr=segment.seq_nr, ack_nr=self.ack_nr, flag=Flag.NONE, data=segment.data)
                     segment.sent = True
                     segment.timer = 0
                     segment.start_time = self.time()
@@ -80,6 +83,7 @@ class BTCPClientSocket(BTCPSocket):
                 for segment in segments[lower:upper]:
                     if message['ack_nr'] == segment.exp_ack:
                         segment.is_acked = True
+                        self.seq_nr = segment.exp_ack
                         break
                 # Move window for each acknowledged segment
                 for segment in segments[lower:upper]:
@@ -104,7 +108,7 @@ class BTCPClientSocket(BTCPSocket):
         while self.state is State.CONN_EST and fin_count < MAX_ATTEMPTS:
             # Send FIN if it was not yet sent or if the timer expired
             if fin_count == 0 or fin_timer > self._timeout:
-                self.post(seq_nr=self.seq_nr, ack_nr=0, flag=Flag.FIN)
+                self.post(seq_nr=self.seq_nr, ack_nr=self.ack_nr, flag=Flag.FIN)
                 fin_count += 1
                 fin_timer = 0
                 start_timer = self.time()

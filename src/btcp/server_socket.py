@@ -14,6 +14,8 @@ class BTCPServerSocket(BTCPSocket):
         super().__init__(window, timeout, 'Server')
         self._lossy_layer = LossyLayer(self, SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT)
         self.temp = {}
+        self.wraparound = 0
+        self.seq_nr = 10
 
     def lossy_layer_input(self, segment, address):
         """ Called by the lossy layer from another thread whenever a segment arrives """
@@ -31,6 +33,7 @@ class BTCPServerSocket(BTCPSocket):
             # Send SYNACK if the SYN request was received
             if message and message['flag'] is Flag.SYN:
                 self.acknowledge_post(message, Flag.SYNACK)
+                self.ack_nr = self.safe_incr(message['seq_nr'])
             # Establish the connection if the acknowledgement was received
             elif message and message['flag'] is Flag.ACK:
                 if self.valid_ack(message):
@@ -51,16 +54,15 @@ class BTCPServerSocket(BTCPSocket):
         # Initialize local variables
         data = []
         acked = []
-        wraparound = 0
         if 'ACK-lost' in self.temp:
-            self.send_recv_ack(self.temp['ACK-lost'], acked, data, wraparound)
+            self.send_recv_ack(self.temp['ACK-lost'], acked, data)
         # The server receives while the client does not disconnect
         while self.state is State.CONN_EST:
             message = self.handle_flow(expected=[Flag.NONE, Flag.FIN])
             if not message:
                 continue
             if message['flag'] is Flag.NONE and message['dlen'] > 0:
-                self.send_recv_ack(message, acked, data, wraparound)
+                self.send_recv_ack(message, acked, data)
             # Accept the disconnect request
             elif message['flag'] is Flag.FIN:
                 self.accept_disconnect(message)
@@ -74,21 +76,22 @@ class BTCPServerSocket(BTCPSocket):
 
     def send_recv_ack(self, message: dict, acked: list, data: list) -> None:
         self.acknowledge_post(message, Flag.ACK)
-        segment_id = self.check_wraparound(message['seq_nr'], message['dlen'])
+        segment_id = self.calculate_id(message['seq_nr'], message['dlen'])
+        ack_nr = self.safe_incr(message['seq_nr'], message['dlen'])
         # Only save the data if it was not yet acknowledged
-        if segment_id not in acked:
+        if ack_nr not in acked:
             # Append the data without the padding bytes and ACK number tuple
             data.append((message['data'][:message['dlen']], segment_id))
-            acked.append(segment_id)
+            acked.append(ack_nr)
 
-    def check_wraparound(self, number: int, addition: int = 1) -> int:
-        """  """
+    def calculate_id(self, number: int, addition: int = 1) -> int:
+        """ Calculates the id for the segment """
         summed = number + addition
         if summed < TWO_BYTES:
-            return summed + (self.wraparound * (2 ** 16))
+            return summed + (self.wraparound * TWO_BYTES)
         else:
             self.wraparound += 1
-            return summed % TWO_BYTES + (self.wraparound * (2 ** 16))
+            return summed % TWO_BYTES + (self.wraparound * TWO_BYTES)
 
     def accept_disconnect(self, message: dict) -> None:
         """ Internal function which handles the disconnect attempt """
