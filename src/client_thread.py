@@ -13,7 +13,7 @@ class ClientThread(Thread):
     def run(self):
         """ The main loop of the client """
         self.socket.connect()
-        with open('src/inputs/input.file', 'rb') as f:
+        with open('/home/guus/Uni/AI/Years/3/sem6/Networks/ronproj/bTCP/src/inputs/output.file', 'rb') as f:
             self.sent_bytes = f.read()
         self.socket.send(self.sent_bytes)
         self.socket.disconnect()

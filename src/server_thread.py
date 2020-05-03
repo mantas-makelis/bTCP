@@ -14,7 +14,7 @@ class ServerThread(Thread):
         """ The main loop of the server """
         self.socket.accept()
         self.received_bytes = self.socket.recv()
-        with open('src/inputs/output.file', 'wb') as f:
+        with open('/home/guus/Uni/AI/Years/3/sem6/Networks/ronproj/bTCP/src/inputs/output.file', 'wb') as f:
             f.write(self.received_bytes)
         self.socket.close()
 
