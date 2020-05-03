@@ -15,7 +15,6 @@ class BTCPServerSocket(BTCPSocket):
         self._lossy_layer = LossyLayer(self, SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT)
         self.temp = {}
         self.wraparound = 0
-        self.seq_nr = 10
 
     def lossy_layer_input(self, segment, address):
         """ Called by the lossy layer from another thread whenever a segment arrives """
