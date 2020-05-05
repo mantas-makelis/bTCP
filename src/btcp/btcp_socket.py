@@ -21,7 +21,7 @@ class BTCPSocket:
         self.recv_win = 0
         self.others_recv_win = 0
         self.state = State.OPEN
-        self.seq_nr = 0 # self.start_random_sequence()
+        self.seq_nr = self.start_random_sequence()
         self.ack_nr = 0
         self.buffer = queue.Queue(window)
 

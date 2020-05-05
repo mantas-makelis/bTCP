@@ -41,13 +41,13 @@ class LossyLayer:
 
     # Put the segment into the network
     def send_segment(self, segment):
-        # self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+        self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
 
-        # Testing loss
-        loss = random.uniform(0, 1)
-        if loss > 0.25:
-            self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
-        # Testing duplicates
-        dup = random.uniform(0, 1)
-        if dup < 0.1:
-            self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+        # # Testing loss
+        # loss = random.uniform(0, 1)
+        # if loss > 0.25:
+        #     self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
+        # # Testing duplicates
+        # dup = random.uniform(0, 1)
+        # if dup < 0.1:
+        #     self._udp_sock.sendto(segment, (self._b_ip, self._b_port))

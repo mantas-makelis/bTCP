@@ -75,6 +75,7 @@ class BTCPClientSocket(BTCPSocket):
                     payload.timer = 0
                     payload.start_time = self.time()
                     highest_id_sent = payload.id if payload.id > highest_id_sent else highest_id_sent
+            # TODO: add more frequent ACK check
             segment = self.handle_flow(expected=[Flag.ACK])
             if segment:
                 # Find the segment which was acknowledged
