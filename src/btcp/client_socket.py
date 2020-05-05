@@ -27,7 +27,7 @@ class BTCPClientSocket(BTCPSocket):
         # Initialize local variables
         syn_count = syn_timer = start_timer = 0
         # Attempt to connect while the state is unchanged or maximum attempts are exceeded
-        while self.state is State.OPEN and syn_count < MAX_ATTEMPTS:
+        while syn_count < MAX_ATTEMPTS:
             # Send SYN if it was not yet sent or if the timer expired
             if syn_count == 0 or syn_timer > self._timeout:
                 self.post(seq_nr=self.seq_nr, ack_nr=self.ack_nr, flag=Flag.SYN)
@@ -46,10 +46,13 @@ class BTCPClientSocket(BTCPSocket):
                 self.ack_nr = self.safe_incr(segment.seq_nr)
                 self.acknowledge_post(segment, Flag.ACK)
                 self.state = State.CONN_EST
-                if self.show_prints:
-                    print('-- Client established connection --')
+                break
             # Increase the timer
             syn_timer = self.time() - start_timer
+        if self.show_prints and syn_count < MAX_ATTEMPTS:
+            print('-- Client established connection --')
+        elif self.show_prints and syn_count >= MAX_ATTEMPTS:
+            print('--! Client timed out !--')
 
     def send(self, file: str) -> None:
         """ Send data originating from the application in a reliable way to the server """
@@ -57,31 +60,26 @@ class BTCPClientSocket(BTCPSocket):
             raise BadState('Send is only allowed if the connection is established')
         # Arrange the data into payloads as buffer
         payloads = self._prepare_payloads(file)
-        load_count = len(payloads)
+        payload_count = len(payloads)
         # Set window pointers
-        lower = 0
-        upper = self.recv_win if load_count > self.recv_win else load_count
-        # Set in-flight trackers
-        highest_sent = lowest_acked = 0
+        lower = highest_id_sent = 0
+        upper = self.recv_win if payload_count > self.recv_win else payload_count
         while lower != upper:
             # Send/resend segments
             for payload in payloads[lower:upper]:
-                # Do not send any if pending segments are more than window size
-                in_flight = highest_sent - lowest_acked
-                if self.others_recv_win - in_flight <= 0:
-                    break
                 # Filter out only not sent or timed out segments
                 if not payload.sent or payload.timer > self._timeout:
-                    self.post(seq_nr=self.seq_nr+payload.id, ack_nr=self.ack_nr, flag=Flag.NONE, data=payload.data)
+                    seq_nr = self.safe_incr(self.seq_nr, payload.id)
+                    self.post(seq_nr=seq_nr, ack_nr=self.ack_nr, flag=Flag.NONE, data=payload.data)
                     payload.sent = True
                     payload.timer = 0
                     payload.start_time = self.time()
-                    highest_sent = payload.id if payload.id > highest_sent else highest_sent
+                    highest_id_sent = payload.id if payload.id > highest_id_sent else highest_id_sent
             segment = self.handle_flow(expected=[Flag.ACK])
             if segment:
                 # Find the segment which was acknowledged
                 for payload in payloads[lower:upper]:
-                    if segment.ack_nr == self.seq_nr + payload.id + 1:
+                    if segment.ack_nr == self.safe_incr(self.seq_nr, self.safe_incr(payload.id)):
                         payload.is_acked = True
                         break
                 # Move window for each acknowledged segment
@@ -90,11 +88,16 @@ class BTCPClientSocket(BTCPSocket):
                     if not payload.is_acked:
                         break
                     lower += 1
-                    upper += 1 if upper < load_count else 0
+                    upper += 1 if upper < payload_count else 0
             # Update timers for each sent and unacknowledged segment
             for payload in payloads[lower:upper]:
                 if payload.sent:
                     payload.timer = self.time() - payload.start_time
+            # Update the upper pointer of the receiving window
+            new_upper = upper + self.recv_win - (upper - lower)
+            upper = new_upper if new_upper < payload_count else payload_count
+        # Update the sequence number after the file was sent
+        self.seq_nr = self.safe_incr(self.seq_nr, payloads[-1].id)
 
     def disconnect(self) -> None:
         """ Perform a three-way handshake to terminate a connection """

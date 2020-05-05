@@ -27,7 +27,7 @@ class BTCPServerSocket(BTCPSocket):
             raise BadState('Only non-connected server can accept a connection')
         conn_attempt = False
         # Wait for connection attempt while the state is unchanged
-        while State.OPEN:
+        while 1:
             # Handle the incoming traffic
             segment = self.handle_flow(expected=[Flag.SYN, Flag.ACK, Flag.NONE])
             # Send SYNACK if the SYN request was received
@@ -41,6 +41,7 @@ class BTCPServerSocket(BTCPSocket):
                 if self.valid_ack(segment):
                     self.seq_nr = self.safe_incr(self.seq_nr)
                     self.state = State.CONN_EST
+                    break
             # In case ACK was lost but the next segment of data was received
             elif conn_attempt and segment and segment.flag is Flag.NONE:
                 self.seq_nr = self.safe_incr(self.seq_nr)
@@ -92,7 +93,7 @@ class BTCPServerSocket(BTCPSocket):
         timer = 0
         start_time = self.time()
         # Attempt to disconnect until the state is changed or timer is exceeded
-        while self.state is State.CONN_EST:
+        while 1:
             segment = self.handle_flow(expected=[Flag.FIN, Flag.ACK])
             # Send FINACK if repeated FIN request was received or if it was not yet sent
             if segment and segment.flag is Flag.FIN:
@@ -103,6 +104,7 @@ class BTCPServerSocket(BTCPSocket):
                 self.state = State.OPEN
                 if self.show_prints:
                     print(f'-- Server terminated connection --', flush=True)
+                break
             timer = self.time() - start_time
 
     def close(self) -> None:
