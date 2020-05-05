@@ -16,8 +16,4 @@ class Flag(Enum):
 class State(Enum):
     """ Different states for a bTCP socket """
     OPEN = 0
-    CONN_PEND = 1
-    CONN_EST = 2
-    DISC_PEND = 3
-    RECV = 4
-    SEND = 5
+    CONN_EST = 1

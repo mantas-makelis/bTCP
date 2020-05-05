@@ -1,23 +1,25 @@
 from btcp.client_socket import BTCPClientSocket
 from threading import Thread
 
+from btcp.enums import State
+
 
 class ClientThread(Thread):
     """ Simulates the client with a single socket """
 
-    def __init__(self, window, timeout, show_prints):
+    def __init__(self, window: int, timeout: int, file_name: str, show_prints: bool = False):
         super().__init__()
         self.socket = BTCPClientSocket(window, timeout, show_prints)
-        self.sent_bytes = b''
+        self.file_name = file_name
 
     def run(self):
         """ The main loop of the client """
         self.socket.connect()
-        with open('src/inputs/output.file', 'rb') as f:
-            self.sent_bytes = f.read()
-        self.socket.send(self.sent_bytes)
-        self.socket.disconnect()
+        if self.socket.state is State.CONN_EST:
+            self.socket.send(self.file_name)
+            self.socket.disconnect()
         self.socket.close()
 
     def get_sent_file(self):
-        return self.sent_bytes
+        with open(self.file_name, 'rb') as f:
+            return f.read()

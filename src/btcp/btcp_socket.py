@@ -5,6 +5,7 @@ import struct
 import time
 from typing import Optional
 
+from btcp.classes import Segment, WrongFlag
 from btcp.constants import SEGMENT_KEYS, HEADER_FORMAT, DATA_FORMAT, PAYLOAD_SIZE, TWO_BYTES
 from btcp.enums import Flag, State
 
@@ -12,7 +13,7 @@ from btcp.enums import Flag, State
 class BTCPSocket:
     """ Base bTCP socket on which both client and server sockets are based """
 
-    def __init__(self, window: int, timeout: int, name: str, show_prints: bool=False):
+    def __init__(self, window: int, timeout: int, name: str, show_prints: bool = False):
         self._window = window
         self._timeout = timeout
         self._name = name
@@ -24,24 +25,23 @@ class BTCPSocket:
         self.ack_nr = 0
         self.buffer = queue.Queue(window)
 
-    def handle_flow(self, expected: [Flag]) -> Optional[dict]:
+    def handle_flow(self, expected: [Flag]) -> Optional[Segment]:
         """ Checks if any message was received and returns it if it was """
         try:
             segment = self.buffer.get(block=False)
-            message = self.unpack_segment(segment)
-            if message['flag'] in expected and self.valid_checksum(message):
-                self.others_recv_win = message['win']
-                return message
+            unpacked_segment = self.unpack_segment(segment)
+            if unpacked_segment.flag in expected and self.valid_checksum(unpacked_segment):
+                self.others_recv_win = unpacked_segment.win
+                return unpacked_segment
         except queue.Empty:
             pass
         return None
 
-    def acknowledge_post(self, message: dict, flag: Flag) -> None:
+    def acknowledge_post(self, segment: Segment, flag: Flag) -> None:
         """ Sends acknowledgement message """
         if flag not in [Flag.ACK, Flag.SYNACK, Flag.FINACK]:
-            return
-        ack_nr = self.safe_incr(message['seq_nr'], (message['dlen'] if message['dlen'] > 0 else 1))
-        self.post(self.seq_nr, ack_nr, flag)
+            raise WrongFlag('Only acknowledgement flag can be sent using this method')
+        self.post(self.seq_nr, self.safe_incr(segment.seq_nr), flag)
 
     def post(self, seq_nr: int, ack_nr: int, flag: Flag, data: bytes = b''):
         segment = self.pack_segment(seq_nr=seq_nr, ack_nr=ack_nr, data=data, flag=flag)
@@ -49,9 +49,9 @@ class BTCPSocket:
             print(f'[seq: {seq_nr}; ack: {ack_nr}] {self._name} sent {flag.name}', flush=True)
         self._lossy_layer.send_segment(segment)
 
-    def valid_ack(self, message: dict, addition: int = 1) -> bool:
+    def valid_ack(self, segment: Segment, addition: int = 1) -> bool:
         """ Checks if the received ACK number is good """
-        return self.safe_incr(self.seq_nr, addition) == message['ack_nr']
+        return self.safe_incr(self.seq_nr, addition) == segment.ack_nr
 
     def pack_segment(self, seq_nr: int = -1, ack_nr: int = 0, data: bytes = b'', flag: Flag = Flag.NONE) -> bytes:
         """ Creates a segment with the given data and current sequence and acknowledgement numbers """
@@ -62,30 +62,29 @@ class BTCPSocket:
             seq_nr = self.seq_nr
         self.recv_win = self._window - self.buffer.qsize()
         header = struct.pack(HEADER_FORMAT,
-                             seq_nr,         # sequence number (halfword, 2 bytes)
-                             ack_nr,         # acknowledgement number (halfword, 2 bytes)
-                             flag.value,     # flags (byte),
+                             seq_nr,  # sequence number (halfword, 2 bytes)
+                             ack_nr,  # acknowledgement number (halfword, 2 bytes)
+                             flag.value,  # flags (byte),
                              self.recv_win,  # window (byte)
-                             data_size,      # data length (halfword, 2 bytes)
-                             0)              # checksum (halfword, 2 bytes)
+                             data_size,  # data length (halfword, 2 bytes)
+                             0)  # checksum (halfword, 2 bytes)
         payload = struct.pack(DATA_FORMAT, data)
         cksum = self.calc_checksum(header + payload)
         header = struct.pack(HEADER_FORMAT, seq_nr, ack_nr, flag.value, self.recv_win, data_size, cksum)
         return header + payload
 
-    def unpack_segment(self, segment: bytes) -> dict:
+    def unpack_segment(self, segment: bytes) -> Segment:
         """ Creates a dictionary representation of the received segment """
         unpacked = struct.unpack(HEADER_FORMAT + DATA_FORMAT, segment)
         unpacked = dict(zip(SEGMENT_KEYS, unpacked))
-        unpacked['flag'] = Flag(unpacked['flag'])
-        return unpacked
+        return Segment(unpacked)
 
-    def valid_checksum(self, msg: dict) -> bool:
+    def valid_checksum(self, segment: Segment) -> bool:
         """ Validates the received checksum """
-        packed_seg = struct.pack(HEADER_FORMAT + DATA_FORMAT, msg['seq_nr'], msg['ack_nr'], msg['flag'].value,
-                                 msg['win'], msg['dlen'], 0, msg['data'])
+        packed_seg = struct.pack(HEADER_FORMAT + DATA_FORMAT, segment.seq_nr, segment.ack_nr,
+                                 segment.flag.value, segment.win, segment.dlen, 0, segment.data)
         cksum = self.calc_checksum(packed_seg)
-        return cksum == msg['cksum']
+        return cksum == segment.cksum
 
     def calc_checksum(self, segment: bytes) -> int:
         """ Calculates the checksum for segment data """
