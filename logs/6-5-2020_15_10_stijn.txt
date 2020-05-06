@@ -1,0 +1,37 @@
+<subprocess.Popen object at 0x7ffb8cba0dd0>
+[sudo] password for guus: 
+<subprocess.Popen object at 0x7ffb8cbac090>
+<subprocess.Popen object at 0x7ffb8cbb0c90>
+F<subprocess.Popen object at 0x7ffb8cf78a50>
+<subprocess.Popen object at 0x7ffb8cbc4210>
+<subprocess.Popen object at 0x7ffb8cbc4a10>
+.<subprocess.Popen object at 0x7ffb8cbac850>
+<subprocess.Popen object at 0x7ffb8cb5b750>
+<subprocess.Popen object at 0x7ffb8cb630d0>
+.<subprocess.Popen object at 0x7ffb8cbb0d10>
+<subprocess.Popen object at 0x7ffb8cb76590>
+<subprocess.Popen object at 0x7ffb8cb76810>
+.<subprocess.Popen object at 0x7ffb8cbac690>
+<subprocess.Popen object at 0x7ffb8cb819d0>
+.<subprocess.Popen object at 0x7ffb8cb769d0>
+<subprocess.Popen object at 0x7ffb8cb60150>
+<subprocess.Popen object at 0x7ffb8cb60310>
+.<subprocess.Popen object at 0x7ffb8cbac690>
+<subprocess.Popen object at 0x7ffb8c2f6e10>
+<subprocess.Popen object at 0x7ffb8cb61850>
+.
+======================================================================
+FAIL: test_allbad_network (__main__.TestbTCPFramework)
+reliability over network with all of the above problems
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/guus/Uni/AI/Years/3/sem6/Networks/ronproj/bTCP/src/testframework.py", line 106, in test_allbad_network
+    self._run_test()
+  File "/home/guus/Uni/AI/Years/3/sem6/Networks/ronproj/bTCP/src/testframework.py", line 115, in _run_test
+    self.assertEqual(sent, recv)
+AssertionError: b'Lor[107186 chars]er elit, ac tincidunt justo dui pellentesque o[96483 chars]s.\n' != b'Lor[107186 chars]er el'
+
+----------------------------------------------------------------------
+Ran 7 tests in 60.136s
+
+FAILED (failures=1)
