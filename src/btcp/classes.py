@@ -24,6 +24,7 @@ class Segment:
         self.dlen = unpacked['dlen']
         self.cksum = unpacked['cksum']
         self.data = unpacked['data']
+        self.address = None
 
 
 class BadState(Exception):

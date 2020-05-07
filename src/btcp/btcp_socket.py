@@ -17,6 +17,7 @@ class BTCPSocket:
         self._window = window
         self._timeout = timeout
         self._name = name
+        self.connectedAddress = None
         self.show_prints = show_prints
         self.recv_win = 0
         self.others_recv_win = 0
@@ -24,12 +25,16 @@ class BTCPSocket:
         self.seq_nr = self.start_random_sequence()
         self.ack_nr = 0
         self.buffer = queue.Queue(window)
+        self.data_buffer = {}
 
     def handle_flow(self, expected: [Flag]) -> Optional[Segment]:
         """ Checks if any message was received and returns it if it was """
         try:
-            segment = self.buffer.get(block=False)
+            address, segment = self.buffer.get(block=False)
             unpacked_segment = self.unpack_segment(segment)
+            unpacked_segment.address = address
+            if self.state is State.CONN_EST and self.connectedAddress != unpacked_segment.address:
+                return None
             if unpacked_segment.flag in expected and self.valid_checksum(unpacked_segment):
                 self.others_recv_win = unpacked_segment.win
                 return unpacked_segment
@@ -38,12 +43,13 @@ class BTCPSocket:
         return None
 
     def acknowledge_post(self, segment: Segment, flag: Flag) -> None:
-        """ Sends acknowledgement message """
+        """ Sends an acknowledgement segment """
         if flag not in [Flag.ACK, Flag.SYNACK, Flag.FINACK]:
             raise WrongFlag('Only acknowledgement flag can be sent using this method')
         self.post(self.seq_nr, self.safe_incr(segment.seq_nr), flag)
 
     def post(self, seq_nr: int, ack_nr: int, flag: Flag, data: bytes = b''):
+        """ Sends a segment """
         segment = self.pack_segment(seq_nr=seq_nr, ack_nr=ack_nr, data=data, flag=flag)
         if self.show_prints:
             print(f'[seq: {seq_nr}; ack: {ack_nr}] {self._name} sent {flag.name}', flush=True)
@@ -60,7 +66,7 @@ class BTCPSocket:
             raise ValueError
         if seq_nr == -1:
             seq_nr = self.seq_nr
-        self.recv_win = self._window - self.buffer.qsize()
+        self.recv_win = self._window - self.buffer.qsize() - len(self.data_buffer)
         header = struct.pack(HEADER_FORMAT,
                              seq_nr,  # sequence number (halfword, 2 bytes)
                              ack_nr,  # acknowledgement number (halfword, 2 bytes)

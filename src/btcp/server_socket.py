@@ -14,12 +14,17 @@ class BTCPServerSocket(BTCPSocket):
     def __init__(self, window: int, timeout: int, show_prints: bool = False):
         super().__init__(window, timeout, 'Server', show_prints)
         self._lossy_layer = LossyLayer(self, SERVER_IP, SERVER_PORT, CLIENT_IP, CLIENT_PORT)
-        self.data_buffer = {}
         self.data_sequent = 0
 
     def lossy_layer_input(self, segment: bytes, address) -> None:
         """ Called by the lossy layer from another thread whenever a segment arrives """
-        self.buffer.put(segment, block=True, timeout=50)
+        self.buffer.put((address, segment), block=True, timeout=25)
+
+    def send_synack(self, segment: str, conn_attempt: bool) -> None:
+        """ Sends a SYNACK and sets the new state """
+        conn_attempt = True
+        self.acknowledge_post(segment, Flag.SYNACK)
+        self.ack_nr = self.safe_incr(segment.seq_nr)
 
     def accept(self) -> None:
         """ Wait for the client to initiate a three-way handshake """
@@ -27,25 +32,20 @@ class BTCPServerSocket(BTCPSocket):
             raise BadState('Only non-connected server can accept a connection')
         conn_attempt = False
         # Wait for connection attempt while the state is unchanged
-        while 1:
+        while True:
             # Handle the incoming traffic
             segment = self.handle_flow(expected=[Flag.SYN, Flag.ACK, Flag.NONE])
             # Send SYNACK if the SYN request was received
             if segment and segment.flag is Flag.SYN:
-                conn_attempt = True
-                self.acknowledge_post(segment, Flag.SYNACK)
-                self.ack_nr = self.safe_incr(segment.seq_nr)
+                self.send_synack(segment, conn_attempt)
             # Establish the connection if the acknowledgement was received
             elif segment and segment.flag is Flag.ACK:
-                # TODO: Merge this block with the next
                 if self.valid_ack(segment):
-                    self.seq_nr = self.safe_incr(self.seq_nr)
-                    self.state = State.CONN_EST
+                    self.set_seq_and_state(segment)
                     break
             # In case ACK was lost but the next segment of data was received
             elif conn_attempt and segment and segment.flag is Flag.NONE:
-                self.seq_nr = self.safe_incr(self.seq_nr)
-                self.state = State.CONN_EST
+                self.set_seq_and_state(segment)
                 self.acknowledge_post(segment, Flag.ACK)
                 self.data_buffer[segment.seq_nr] = segment
                 break
@@ -54,17 +54,27 @@ class BTCPServerSocket(BTCPSocket):
         if self.show_prints:
             print(f'-- Server established connection --', flush=True)
 
+    def set_seq_and_state(self, segment: Segment) -> None:
+        """ Increases the sequence number by one and sets the state to connection established """
+        self.seq_nr = self.safe_incr(self.seq_nr)
+        self.state = State.CONN_EST
+        self.connectedAddress = segment.address
+    
+    def return_data(self) -> list: 
+        """ Returns the next segments data without padding bytes """
+        segment = self.data_buffer.pop(self.data_sequent)
+        self.data_sequent = self.safe_incr(self.data_sequent)
+        return segment.data[:segment.dlen]
+
     def recv(self) -> Optional[bytes]:
         """ Send any incoming data to the application layer """
         if self.state is not State.CONN_EST:
             raise BadState('Receive is only allowed if a connection is established')
         # Check if there is next data in the buffer received prior
         if self.data_sequent in self.data_buffer:
-            segment = self.data_buffer.pop(self.data_sequent)
-            self.data_sequent = self.safe_incr(self.data_sequent)
-            return segment.data[:segment.dlen]
+            self.return_data()
         # Wait until a segment is received
-        while 1:
+        while True:
             segment = self.handle_flow(expected=[Flag.NONE, Flag.FIN])
             # If requested - accept the disconnect request
             if not segment:
@@ -74,8 +84,8 @@ class BTCPServerSocket(BTCPSocket):
             self.acknowledge_post(segment, Flag.ACK)
             # If the segment is out of order - buffer it and continue
             if self.data_sequent != segment.seq_nr:
-                # Check if not a duplicate
-                if segment.seq_nr not in self.data_buffer:
+                # Check if it was not yet buffered and not an already received segment
+                if segment.seq_nr not in self.data_buffer and segment.seq_nr > self.data_sequent:
                     self.data_buffer[segment.seq_nr] = segment
                 continue
             self.data_sequent = self.safe_incr(self.data_sequent)
@@ -93,7 +103,7 @@ class BTCPServerSocket(BTCPSocket):
         timer = 0
         start_time = self.time()
         # Attempt to disconnect until the state is changed or timer is exceeded
-        while 1:
+        while True:
             segment = self.handle_flow(expected=[Flag.FIN, Flag.ACK])
             # Send FINACK if repeated FIN request was received or if it was not yet sent
             if segment and segment.flag is Flag.FIN:
