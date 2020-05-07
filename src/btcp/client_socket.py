@@ -29,7 +29,7 @@ class BTCPClientSocket(BTCPSocket):
         # Attempt to connect while the state is unchanged or maximum attempts are exceeded
         while syn_count < MAX_ATTEMPTS:
             # Send SYN if it was not yet sent or if the timer expired
-            self.send_syn_fin(syn_count, syn_timer, start_timer, Flag.SYN)
+            counter, timer, start_timer = self.send_syn_fin(syn_count, syn_timer, start_timer, Flag.SYN)
             # Handle the incoming traffic
             segment = self.handle_flow(expected=[Flag.SYNACK])
             if segment:
@@ -54,14 +54,14 @@ class BTCPClientSocket(BTCPSocket):
         payloads, payload_count, lower, upper, highest_id_sent = self.setup(file)
         while lower != upper:
             # Send/resend segments
-            self.send_resend_segments(highest_id_sent, payloads, lower, upper)
+            highest_id_sent = self.send_resend_segments(highest_id_sent, payloads, lower, upper)
             # TODO: add more frequent ACK check
             segment = self.handle_flow(expected=[Flag.ACK])
             if segment:
                 # Find the segment which was acknowledged
                 self.find_acked_segment(segment, payloads, lower, upper)
                 # Move window for each acknowledged segment
-                self.slide_window(payloads, payload_count, lower, upper)
+                lower, upper = self.slide_window(payloads, payload_count, lower, upper)
             # Update timers for each sent and unacknowledged segment
             for payload in payloads[lower:upper]:
                 if payload.sent:
@@ -81,7 +81,7 @@ class BTCPClientSocket(BTCPSocket):
         # Attempt to disconnect while the state is unchanged or maximum attempts are exceeded
         while self.state is State.CONN_EST and fin_count < MAX_ATTEMPTS:
             # Send FIN if it was not yet sent or if the timer expired
-            self.send_syn_fin(fin_count, fin_timer, start_timer, Flag.FIN)
+            counter, timer, start_timer = self.send_syn_fin(fin_count, fin_timer, start_timer, Flag.FIN)
             # Handle the incoming traffic
             segment = self.handle_flow(expected=[Flag.FINACK])
             if segment:
@@ -104,13 +104,14 @@ class BTCPClientSocket(BTCPSocket):
                 payloads.append(Payload(identifier=i, data=payload))
         return payloads
 
-    def send_syn_fin(self, counter: int, timer: int, start_timer: int, flag: Flag):
+    def send_syn_fin(self, counter: int, timer: int, start_timer: int, flag: Flag) -> tuple:
         """ Helper function to send SYNs or FINs """
         if counter == 0 or timer > self._timeout:
             self.post(seq_nr=self.seq_nr, ack_nr=self.ack_nr, flag=flag)
             counter += 1
             timer = 0
             start_timer = self.time()
+        return counter, timer, start_timer
 
     def connect_prints(self, syn_count: int) -> None:
         """ Prints information regarding the client's state during connection"""
@@ -136,7 +137,7 @@ class BTCPClientSocket(BTCPSocket):
         upper = self.others_recv_win if payload_count > self.others_recv_win else payload_count
         return payloads, payload_count, lower, upper, highest_id_sent
 
-    def send_resend_segments(self, highest_id_sent: int, payloads: list, lower: int, upper: int) -> None:
+    def send_resend_segments(self, highest_id_sent: int, payloads: list, lower: int, upper: int) -> int:
         """ Sends or resends segments in current window """
         for payload in payloads[lower:upper]:
             # Filter out only not sent or timed out segments
@@ -147,6 +148,7 @@ class BTCPClientSocket(BTCPSocket):
                 payload.timer = 0
                 payload.start_time = self.time()
                 highest_id_sent = payload.id if payload.id > highest_id_sent else highest_id_sent
+        return highest_id_sent
 
     def find_acked_segment(self, segment: Segment, payloads: list, lower: int, upper: int) -> None:
         """ Finds the segment which was acknowledged """
@@ -155,7 +157,7 @@ class BTCPClientSocket(BTCPSocket):
                 payload.is_acked = True
                 break
 
-    def slide_window(self, payloads: list, payload_count: int, lower: int, upper: int) -> None:
+    def slide_window(self, payloads: list, payload_count: int, lower: int, upper: int) -> tuple:
         """ Slides up the current window by counting acknowledged segments, starting from the lowest one"""
         for payload in payloads[lower:upper]:
             # Stop when unacknowledged segment is encountered
@@ -163,6 +165,7 @@ class BTCPClientSocket(BTCPSocket):
                 break
             lower += 1
             upper += 1 if upper < payload_count else 0
+        return lower, upper
 
     def close(self) -> None:
         """ Clean up any state """

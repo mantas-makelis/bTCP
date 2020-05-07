@@ -8,8 +8,8 @@ from server_thread import ServerThread
 
 timeout = 400  # Set the default timeout
 winsize = 32  # Set the windows size
-input_file = os.path.abspath('src/inputs/input.txt')
-output_file = os.path.abspath('src/inputs/output.txt')
+input_file = os.path.abspath('inputs/input.txt')
+output_file = os.path.abspath('inputs/output.txt')
 run_commands = False  # Set to True if you want to run commands
 show_prints = True  # Set to True if you want to see the prints
 

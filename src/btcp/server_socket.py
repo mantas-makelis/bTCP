@@ -20,12 +20,6 @@ class BTCPServerSocket(BTCPSocket):
         """ Called by the lossy layer from another thread whenever a segment arrives """
         self.buffer.put((address, segment), block=True, timeout=25)
 
-    def send_synack(self, segment: str, conn_attempt: bool) -> None:
-        """ Sends a SYNACK and sets the new state """
-        conn_attempt = True
-        self.acknowledge_post(segment, Flag.SYNACK)
-        self.ack_nr = self.safe_incr(segment.seq_nr)
-
     def accept(self) -> None:
         """ Wait for the client to initiate a three-way handshake """
         if self.state is not State.OPEN:
@@ -37,7 +31,8 @@ class BTCPServerSocket(BTCPSocket):
             segment = self.handle_flow(expected=[Flag.SYN, Flag.ACK, Flag.NONE])
             # Send SYNACK if the SYN request was received
             if segment and segment.flag is Flag.SYN:
-                self.send_synack(segment, conn_attempt)
+                conn_attempt = True
+                self.send_synack(segment)
             # Establish the connection if the acknowledgement was received
             elif segment and segment.flag is Flag.ACK:
                 if self.valid_ack(segment):
@@ -53,18 +48,6 @@ class BTCPServerSocket(BTCPSocket):
         self.data_sequent = self.ack_nr
         if self.show_prints:
             print(f'-- Server established connection --', flush=True)
-
-    def set_seq_and_state(self, segment: Segment) -> None:
-        """ Increases the sequence number by one and sets the state to connection established """
-        self.seq_nr = self.safe_incr(self.seq_nr)
-        self.state = State.CONN_EST
-        self.connectedAddress = segment.address
-    
-    def return_data(self) -> list: 
-        """ Returns the next segments data without padding bytes """
-        segment = self.data_buffer.pop(self.data_sequent)
-        self.data_sequent = self.safe_incr(self.data_sequent)
-        return segment.data[:segment.dlen]
 
     def recv(self) -> Optional[bytes]:
         """ Send any incoming data to the application layer """
@@ -116,6 +99,23 @@ class BTCPServerSocket(BTCPSocket):
                     print(f'-- Server terminated connection --', flush=True)
                 break
             timer = self.time() - start_time
+
+    def send_synack(self, segment: Segment) -> None:
+        """ Sends a SYNACK and sets the new state """
+        self.acknowledge_post(segment, Flag.SYNACK)
+        self.ack_nr = self.safe_incr(segment.seq_nr)
+
+    def set_seq_and_state(self, segment: Segment) -> None:
+        """ Increases the sequence number by one and sets the state to connection established """
+        self.seq_nr = self.safe_incr(self.seq_nr)
+        self.state = State.CONN_EST
+        self.connectedAddress = segment.address
+
+    def return_data(self) -> list:
+        """ Returns the next segments data without padding bytes """
+        segment = self.data_buffer.pop(self.data_sequent)
+        self.data_sequent = self.safe_incr(self.data_sequent)
+        return segment.data[:segment.dlen]
 
     def close(self) -> None:
         """ Clean up any state """
