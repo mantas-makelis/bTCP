@@ -6,10 +6,10 @@ from socket import *
 from client_thread import ClientThread
 from server_thread import ServerThread
 
-timeout = 400  # Set the default timeout
-winsize = 32  # Set the windows size
-input_file = os.path.abspath('inputs/input.txt') # Set the path for the input file
-output_file = os.path.abspath('inputs/output.txt') # Set the path for the output file
+timeout = 400 # Set the default timeout
+winsize = 64  # Set the windows size
+input_file = os.path.abspath('src/inputs/input.txt') # Set the path for the input file
+output_file = os.path.abspath('src/inputs/output.txt') # Set the path for the output file
 run_commands = True  # Set to True if you want to run commands
 show_prints = False  # Set to True if you want to see the prints
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="bTCP tests")
-    parser.add_argument("-w", "--window", help="Define bTCP window size used", type=int, default=100)
+    parser.add_argument("-w", "--window", help="Define bTCP window size used", type=int, default=winsize)
     parser.add_argument("-t", "--timeout", help="Define the timeout value used (ms)", type=int, default=timeout)
     args, extra = parser.parse_known_args()
     timeout = args.timeout

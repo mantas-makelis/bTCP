@@ -66,7 +66,8 @@ class BTCPSocket:
             raise ValueError
         if seq_nr == -1:
             seq_nr = self.seq_nr
-        self.recv_win = self._window - self.buffer.qsize() - len(self.data_buffer)
+        potential_win = self._window - (self.buffer.qsize() + len(self.data_buffer))
+        self.recv_win = potential_win if potential_win > 0 else 0
         header = struct.pack(HEADER_FORMAT,
                              seq_nr,  # sequence number (halfword, 2 bytes)
                              ack_nr,  # acknowledgement number (halfword, 2 bytes)

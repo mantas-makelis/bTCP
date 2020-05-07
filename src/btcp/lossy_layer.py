@@ -45,7 +45,7 @@ class LossyLayer:
 
         # # Testing loss
         # loss = random.uniform(0, 1)
-        # if loss > 0.25:
+        # if loss > 0.15:
         #     self._udp_sock.sendto(segment, (self._b_ip, self._b_port))
         # # Testing duplicates
         # dup = random.uniform(0, 1)

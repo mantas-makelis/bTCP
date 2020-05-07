@@ -29,7 +29,7 @@ class BTCPClientSocket(BTCPSocket):
         # Attempt to connect while the state is unchanged or maximum attempts are exceeded
         while syn_count < MAX_ATTEMPTS:
             # Send SYN if it was not yet sent or if the timer expired
-            counter, timer, start_timer = self._send_syn_fin(syn_count, syn_timer, start_timer, Flag.SYN)
+            syn_count, syn_timer, start_timer = self._send_syn_fin(syn_count, syn_timer, start_timer, Flag.SYN)
             # Handle the incoming traffic
             segment = self.handle_flow(expected=[Flag.SYNACK])
             if segment:
@@ -62,12 +62,9 @@ class BTCPClientSocket(BTCPSocket):
                 # Move window for each acknowledged segment
                 lower, upper = self._slide_window(payloads, payload_count, lower, upper)
             # Update timers for each sent and unacknowledged segment
-            for payload in payloads[lower:upper]:
-                if payload.sent:
-                    payload.timer = self.time() - payload.start_time
+            self._update_timers(payloads, lower, upper)
             # Update the upper pointer of the receiving window
-            new_upper = upper + self.others_recv_win - (upper - lower)
-            upper = new_upper if new_upper < payload_count else payload_count
+            upper = self._update_upper_pointer(lower, upper, payload_count)
         # Update the sequence number after the file was sent
         self.seq_nr = self.safe_incr(self.seq_nr, payloads[-1].id)
 
@@ -80,7 +77,7 @@ class BTCPClientSocket(BTCPSocket):
         # Attempt to disconnect while the state is unchanged or maximum attempts are exceeded
         while self.state is State.CONN_EST and fin_count < MAX_ATTEMPTS:
             # Send FIN if it was not yet sent or if the timer expired
-            counter, timer, start_timer = self._send_syn_fin(fin_count, fin_timer, start_timer, Flag.FIN)
+            fin_count, fin_timer, start_timer = self._send_syn_fin(fin_count, fin_timer, start_timer, Flag.FIN)
             # Handle the incoming traffic
             segment = self.handle_flow(expected=[Flag.FINACK])
             if segment:
@@ -165,6 +162,17 @@ class BTCPClientSocket(BTCPSocket):
             lower += 1
             upper += 1 if upper < payload_count else 0
         return lower, upper
+
+    def _update_upper_pointer(self, lower: int, upper: int, payload_count: int) -> int:
+        """ Helper function for the sliding window """
+        new_upper = upper + self.others_recv_win - (upper - lower)
+        return new_upper if new_upper < payload_count else payload_count
+
+    def _update_timers(self, payloads: list, lower: int, upper: int) -> None:
+        """ Updating the timers of sent segments """
+        for payload in payloads[lower:upper]:
+            if payload.sent:
+                payload.timer = self.time() - payload.start_time
 
     def close(self) -> None:
         """ Clean up any state """
