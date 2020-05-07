@@ -14,6 +14,6 @@ class Flag(Enum):
 
 @unique
 class State(Enum):
-    """ Different states for a bTCP socket """
+    """ States of a bTCP socket """
     OPEN = 0
     CONN_EST = 1

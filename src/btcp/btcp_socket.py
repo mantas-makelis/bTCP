@@ -23,7 +23,7 @@ class BTCPSocket:
         self.others_recv_win = 0
         self.state = State.OPEN
         self.seq_nr = self.start_random_sequence()
-        self.ack_nr = 0
+        self.recv_seq = 0
         self.buffer = queue.Queue(window)
         self.data_buffer = {}
 
@@ -67,7 +67,7 @@ class BTCPSocket:
         if seq_nr == -1:
             seq_nr = self.seq_nr
         potential_win = self._window - (self.buffer.qsize() + len(self.data_buffer))
-        self.recv_win = potential_win if potential_win > 0 else 0
+        self.recv_win = potential_win if potential_win > 0 else 1
         header = struct.pack(HEADER_FORMAT,
                              seq_nr,  # sequence number (halfword, 2 bytes)
                              ack_nr,  # acknowledgement number (halfword, 2 bytes)

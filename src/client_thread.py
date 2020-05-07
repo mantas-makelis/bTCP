@@ -21,5 +21,6 @@ class ClientThread(Thread):
         self.socket.close()
 
     def get_sent_file(self):
+        """ Retrieves the input file contents """
         with open(self.file_name, 'rb') as f:
             return f.read()

@@ -22,5 +22,6 @@ class ServerThread(Thread):
         self.socket.close()
 
     def get_recv_file(self):
+        """ Retrieves the output file contents """
         with open(self.file_name, 'rb') as f:
             return f.read()

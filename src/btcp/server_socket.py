@@ -46,7 +46,7 @@ class BTCPServerSocket(BTCPSocket):
         """ Receives the data from the client and send it to the application layer """
         if self.state is not State.CONN_EST:
             raise BadState('Receive is only allowed if a connection is established')
-        if self.ack_nr in self.data_buffer:
+        if self.recv_seq in self.data_buffer:
             return self._return_data_from_buffer()
         while True:
             segment = self.handle_flow(expected=[Flag.NONE, Flag.FIN])
@@ -55,13 +55,11 @@ class BTCPServerSocket(BTCPSocket):
             if segment.flag is Flag.FIN:
                 return self._accept_disconnect(segment)
             self.acknowledge_post(segment, Flag.ACK)
-            # If the segment is out of order - buffer it and continue
-            if self.ack_nr != segment.seq_nr:
-                # Check if it was not yet buffered and not an already received segment
-                if segment.seq_nr not in self.data_buffer and segment.seq_nr > self.ack_nr:
+            if self.recv_seq != segment.seq_nr:
+                if segment.seq_nr not in self.data_buffer and segment.seq_nr > self.recv_seq:
                     self.data_buffer[segment.seq_nr] = segment
                 continue
-            self.ack_nr = self.safe_incr(self.ack_nr)
+            self.recv_seq = self.safe_incr(self.recv_seq)
             return segment.data[:segment.dlen]
     
     def close(self) -> None:
@@ -92,7 +90,7 @@ class BTCPServerSocket(BTCPSocket):
     def _send_synack(self, segment: Segment) -> None:
         """ Sends a SYNACK and updates the acknowledgement number """
         self.acknowledge_post(segment, Flag.SYNACK)
-        self.ack_nr = self.safe_incr(segment.seq_nr)
+        self.recv_seq = self.safe_incr(segment.seq_nr)
 
     def _set_seq_and_state(self, segment: Segment) -> None:
         """ Increases the sequence number by one and sets the state to connection established """
@@ -102,6 +100,6 @@ class BTCPServerSocket(BTCPSocket):
 
     def _return_data_from_buffer(self) -> list:
         """ Removes the expected segment from the buffer and returns the data without padding bytes """
-        segment = self.data_buffer.pop(self.ack_nr)
-        self.ack_nr = self.safe_incr(self.ack_nr)
+        segment = self.data_buffer.pop(self.recv_seq)
+        self.recv_seq = self.safe_incr(self.recv_seq)
         return segment.data[:segment.dlen]

@@ -6,12 +6,12 @@ from socket import *
 from client_thread import ClientThread
 from server_thread import ServerThread
 
-timeout = 400 # Set the default timeout
-winsize = 64  # Set the windows size
+timeout = 500 # Set the default timeout
+winsize = 100  # Set the default window size
 input_file = os.path.abspath('src/inputs/input.txt') # Set the path for the input file
 output_file = os.path.abspath('src/inputs/output.txt') # Set the path for the output file
-run_commands = True  # Set to True if you want to run commands
-show_prints = False  # Set to True if you want to see the prints
+run_commands = True  # Set if you want to run the commands
+show_prints = False  # Set if you want to see the prints
 
 intf = "lo"
 netem_add = "sudo tc qdisc add dev {} root netem".format(intf)
