@@ -32,15 +32,15 @@ class BTCPServerSocket(BTCPSocket):
             # Send SYNACK if the SYN request was received
             if segment and segment.flag is Flag.SYN:
                 conn_attempt = True
-                self.send_synack(segment)
+                self._send_synack(segment)
             # Establish the connection if the acknowledgement was received
             elif segment and segment.flag is Flag.ACK:
                 if self.valid_ack(segment):
-                    self.set_seq_and_state(segment)
+                    self._set_seq_and_state(segment)
                     break
             # In case ACK was lost but the next segment of data was received
             elif conn_attempt and segment and segment.flag is Flag.NONE:
-                self.set_seq_and_state(segment)
+                self._set_seq_and_state(segment)
                 self.acknowledge_post(segment, Flag.ACK)
                 self.data_buffer[segment.seq_nr] = segment
                 break
@@ -55,7 +55,7 @@ class BTCPServerSocket(BTCPSocket):
             raise BadState('Receive is only allowed if a connection is established')
         # Check if there is next data in the buffer received prior
         if self.data_sequent in self.data_buffer:
-            self.return_data()
+            self._return_data()
         # Wait until a segment is received
         while True:
             segment = self.handle_flow(expected=[Flag.NONE, Flag.FIN])
@@ -100,18 +100,18 @@ class BTCPServerSocket(BTCPSocket):
                 break
             timer = self.time() - start_time
 
-    def send_synack(self, segment: Segment) -> None:
+    def _send_synack(self, segment: Segment) -> None:
         """ Sends a SYNACK and sets the new state """
         self.acknowledge_post(segment, Flag.SYNACK)
         self.ack_nr = self.safe_incr(segment.seq_nr)
 
-    def set_seq_and_state(self, segment: Segment) -> None:
+    def _set_seq_and_state(self, segment: Segment) -> None:
         """ Increases the sequence number by one and sets the state to connection established """
         self.seq_nr = self.safe_incr(self.seq_nr)
         self.state = State.CONN_EST
         self.connectedAddress = segment.address
 
-    def return_data(self) -> list:
+    def _return_data(self) -> list:
         """ Returns the next segments data without padding bytes """
         segment = self.data_buffer.pop(self.data_sequent)
         self.data_sequent = self.safe_incr(self.data_sequent)

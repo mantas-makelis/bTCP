@@ -8,10 +8,10 @@ from server_thread import ServerThread
 
 timeout = 400  # Set the default timeout
 winsize = 32  # Set the windows size
-input_file = os.path.abspath('inputs/input.txt')
-output_file = os.path.abspath('inputs/output.txt')
-run_commands = False  # Set to True if you want to run commands
-show_prints = True  # Set to True if you want to see the prints
+input_file = os.path.abspath('inputs/input.txt') # Set the path for the input file
+output_file = os.path.abspath('inputs/output.txt') # Set the path for the output file
+run_commands = True  # Set to True if you want to run commands
+show_prints = False  # Set to True if you want to see the prints
 
 intf = "lo"
 netem_add = "sudo tc qdisc add dev {} root netem".format(intf)
@@ -69,41 +69,41 @@ class TestbTCPFramework(unittest.TestCase):
         """reliability over an ideal framework"""
         self._run_test()
     
-    # def test_flipping_network(self):
-    #     """reliability over network with bit flips (which sometimes results in lower layer packet loss)"""
-    #     if run_commands:
-    #         run_command(netem_change.format("corrupt 1%"))
-    #     self._run_test()
+    def test_flipping_network(self):
+        """reliability over network with bit flips (which sometimes results in lower layer packet loss)"""
+        if run_commands:
+            run_command(netem_change.format("corrupt 1%"))
+        self._run_test()
     
-    # def test_duplicates_network(self):
-    #     """reliability over network with duplicate packets"""
-    #     if run_commands:
-    #         run_command(netem_change.format("duplicate 10%"))
-    #     self._run_test()
+    def test_duplicates_network(self):
+        """reliability over network with duplicate packets"""
+        if run_commands:
+            run_command(netem_change.format("duplicate 10%"))
+        self._run_test()
     
-    # def test_lossy_network(self):
-    #     """reliability over network with packet loss"""
-    #     if run_commands:
-    #         run_command(netem_change.format("loss 10% 25%"))
-    #     self._run_test()
+    def test_lossy_network(self):
+        """reliability over network with packet loss"""
+        if run_commands:
+            run_command(netem_change.format("loss 10% 25%"))
+        self._run_test()
     
-    # def test_reordering_network(self):
-    #     """reliability over network with packet reordering"""
-    #     if run_commands:
-    #         run_command(netem_change.format("delay 20ms reorder 25% 50%"))
-    #     self._run_test()
+    def test_reordering_network(self):
+        """reliability over network with packet reordering"""
+        if run_commands:
+            run_command(netem_change.format("delay 20ms reorder 25% 50%"))
+        self._run_test()
     
-    # def test_delayed_network(self):
-    #     """reliability over network with delay relative to the timeout value"""
-    #     if run_commands:
-    #         run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
-    #     self._run_test()
+    def test_delayed_network(self):
+        """reliability over network with delay relative to the timeout value"""
+        if run_commands:
+            run_command(netem_change.format("delay "+str(timeout)+"ms 20ms"))
+        self._run_test()
     
-    # def test_allbad_network(self):
-    #     """reliability over network with all of the above problems"""
-    #     if run_commands:
-    #         run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
-    #     self._run_test()
+    def test_allbad_network(self):
+        """reliability over network with all of the above problems"""
+        if run_commands:
+            run_command(netem_change.format("corrupt 1% duplicate 10% loss 10% 25% delay 20ms reorder 25% 50%"))
+        self._run_test()
 
     def _run_test(self):
         self.server.start()
