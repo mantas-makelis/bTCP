@@ -68,13 +68,7 @@ class BTCPSocket:
             seq_nr = self.seq_nr
         potential_win = self._window - (self.buffer.qsize() + len(self.data_buffer))
         self.recv_win = potential_win if potential_win > 0 else 1
-        header = struct.pack(HEADER_FORMAT,
-                             seq_nr,  # sequence number (halfword, 2 bytes)
-                             ack_nr,  # acknowledgement number (halfword, 2 bytes)
-                             flag.value,  # flags (byte),
-                             self.recv_win,  # window (byte)
-                             data_size,  # data length (halfword, 2 bytes)
-                             0)  # checksum (halfword, 2 bytes)
+        header = struct.pack(HEADER_FORMAT, seq_nr, ack_nr, flag.value, self.recv_win, data_size, 0)
         payload = struct.pack(DATA_FORMAT, data)
         cksum = self.calc_checksum(header + payload)
         header = struct.pack(HEADER_FORMAT, seq_nr, ack_nr, flag.value, self.recv_win, data_size, cksum)
@@ -95,13 +89,13 @@ class BTCPSocket:
 
     def calc_checksum(self, segment: bytes) -> int:
         """ Calculates the checksum for segment data """
-        if len(segment) % 2 == 1:  # padding
+        if len(segment) % 2 == 1:
             segment += b'\x00'
-        strarr = array.array('H', segment)  # split into 16-bit substrings
-        cksum = sum(strarr)  # sum
-        cksum = (cksum >> 16) + (cksum & 0xffff)  # carry
-        cksum += (cksum >> 16)  # carry in case of spill
-        cksum = ~cksum & 0xffff  # 1's complement
+        strarr = array.array('H', segment)
+        cksum = sum(strarr)
+        cksum = (cksum >> 16) + (cksum & 0xffff)
+        cksum += (cksum >> 16)
+        cksum = ~cksum & 0xffff
         return cksum
 
     def time(self) -> int:
